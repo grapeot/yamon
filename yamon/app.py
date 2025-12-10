@@ -48,18 +48,12 @@ class YamonApp(App):
         padding: 1;
     }
     
-    .metric-box {
-        border: solid $primary;
-        padding: 1;
-        width: 1fr;
-        min-height: 3;
-    }
-    
     #cpu-label, #memory-label, #network-up-label, #network-down-label,
     #gpu-label, #ane-label, #cpu-power-label, #gpu-power-label,
     #ane-power-label, #system-power-label {
         text-style: bold;
         padding: 0 1;
+        height: auto;
     }
     
     #cpu-cores-container {
@@ -90,7 +84,7 @@ class YamonApp(App):
         padding: 1;
         height: auto;
         width: 1fr;
-        min-height: 2;
+        min-height: 6;
         margin-top: 0;
         margin-bottom: 1;
     }
@@ -105,7 +99,7 @@ class YamonApp(App):
         super().__init__()
         self.collector = MetricsCollector()
         self.history = MetricsHistory(max_size=60)  # 60 seconds of history
-        self.chart_renderer = ChartRenderer(width=50, height=8, use_unicode=True)
+        self.chart_renderer = ChartRenderer(width=50, height=10, use_unicode=True)
         self.update_timer: Timer | None = None
     
     def compose(self) -> ComposeResult:
@@ -115,39 +109,29 @@ class YamonApp(App):
         with Container(id="main-container"):
             with Horizontal():
                 with Vertical(id="left-column"):
-                    yield Static("CPU Usage", id="cpu-label")
-                    yield Static("0.0%", classes="metric-box", id="cpu-value")
+                    yield Static("CPU Usage: 0.0%", id="cpu-label")
                     yield Static("", classes="chart-box", id="cpu-chart")
                     
-                    yield Static("Memory Usage", id="memory-label")
-                    yield Static("0.0 B / 0.0 B (0.0%)", classes="metric-box", id="memory-value")
+                    yield Static("Memory Usage: 0.0%", id="memory-label")
                     yield Static("", classes="chart-box", id="memory-chart")
                     
-                    yield Static("Network ↑ Upload", id="network-up-label")
-                    yield Static("0.0 B/s", classes="metric-box", id="network-up-value")
+                    yield Static("Network ↑ Upload: 0.0 B/s", id="network-up-label")
                     
-                    yield Static("Network ↓ Download", id="network-down-label")
-                    yield Static("0.0 B/s", classes="metric-box", id="network-down-value")
+                    yield Static("Network ↓ Download: 0.0 B/s", id="network-down-label")
                     yield Static("", classes="chart-box", id="network-chart")
                     
-                    yield Static("GPU Usage", id="gpu-label")
-                    yield Static("N/A", classes="metric-box", id="gpu-value")
+                    yield Static("GPU Usage: N/A", id="gpu-label")
                     
-                    yield Static("ANE Usage", id="ane-label")
-                    yield Static("N/A", classes="metric-box", id="ane-value")
+                    yield Static("ANE Usage: N/A", id="ane-label")
                 
                 with Vertical(id="right-column"):
-                    yield Static("CPU Power", id="cpu-power-label")
-                    yield Static("N/A", classes="metric-box", id="cpu-power-value")
+                    yield Static("CPU Power: N/A", id="cpu-power-label")
                     
-                    yield Static("GPU Power", id="gpu-power-label")
-                    yield Static("N/A", classes="metric-box", id="gpu-power-value")
+                    yield Static("GPU Power: N/A", id="gpu-power-label")
                     
-                    yield Static("ANE Power", id="ane-power-label")
-                    yield Static("N/A", classes="metric-box", id="ane-power-value")
+                    yield Static("ANE Power: N/A", id="ane-power-label")
                     
-                    yield Static("System Power", id="system-power-label")
-                    yield Static("N/A", classes="metric-box", id="system-power-value")
+                    yield Static("System Power: N/A", id="system-power-label")
                     yield Static("", classes="chart-box", id="power-chart")
             
             with Container(id="cpu-cores-container"):
@@ -169,91 +153,84 @@ class YamonApp(App):
             self.history.add_metrics(metrics)
         except Exception as e:
             # If collection fails, show error
-            error_widget = self.query_one("#cpu-value", Static)
-            error_widget.update(f"Error: {e}")
+            error_label = self.query_one("#cpu-label", Static)
+            error_label.update(f"CPU Usage: Error: {e}")
             return
         
-        # CPU
-        cpu_widget = self.query_one("#cpu-value", Static)
-        cpu_text = f"{metrics.cpu_percent:.1f}%"
-        cpu_widget.update(cpu_text)
+        # CPU - update label with value
+        cpu_label = self.query_one("#cpu-label", Static)
+        cpu_label.update(f"CPU Usage: {metrics.cpu_percent:.1f}%")
         
-        # Memory
-        memory_widget = self.query_one("#memory-value", Static)
-        memory_used = self.collector.format_bytes(metrics.memory_used)
-        memory_total = self.collector.format_bytes(metrics.memory_total)
-        memory_text = f"{memory_used} / {memory_total} ({metrics.memory_percent:.1f}%)"
-        memory_widget.update(memory_text)
-        memory_widget.refresh()
+        # Memory - update label with value
+        memory_label = self.query_one("#memory-label", Static)
+        memory_label.update(f"Memory Usage: {metrics.memory_percent:.1f}%")
         
-        # Network Upload
-        network_up_widget = self.query_one("#network-up-value", Static)
+        # Network Upload - update label with value
+        network_up_label = self.query_one("#network-up-label", Static)
         sent_rate_str = self.collector.format_bytes(int(metrics.network_sent_rate))
-        network_up_widget.update(f"{sent_rate_str}/s")
-        network_up_widget.refresh()
+        network_up_label.update(f"Network ↑ Upload: {sent_rate_str}/s")
         
-        # Network Download
-        network_down_widget = self.query_one("#network-down-value", Static)
+        # Network Download - update label with value
+        network_down_label = self.query_one("#network-down-label", Static)
         recv_rate_str = self.collector.format_bytes(int(metrics.network_recv_rate))
-        network_down_widget.update(f"{recv_rate_str}/s")
-        network_down_widget.refresh()
+        network_down_label.update(f"Network ↓ Download: {recv_rate_str}/s")
         
         # CPU Cores
         cpu_cores_widget = self.query_one("#cpu-cores-value", Static)
         cores_str = " | ".join([f"C{i}: {core:.1f}%" for i, core in enumerate(metrics.cpu_per_core)])
         cpu_cores_widget.update(cores_str)
         
-        # GPU Usage
-        gpu_widget = self.query_one("#gpu-value", Static)
+        # GPU Usage - update label with value
+        gpu_label = self.query_one("#gpu-label", Static)
         if metrics.gpu_usage is not None:
-            gpu_widget.update(f"{metrics.gpu_usage:.1f}%")
+            gpu_label.update(f"GPU Usage: {metrics.gpu_usage:.1f}%")
         else:
-            gpu_widget.update("N/A")
+            gpu_label.update("GPU Usage: N/A")
         
-        # ANE Usage
-        ane_widget = self.query_one("#ane-value", Static)
+        # ANE Usage - update label with value
+        ane_label = self.query_one("#ane-label", Static)
         if metrics.ane_usage is not None:
-            ane_widget.update(f"{metrics.ane_usage:.1f}%")
+            ane_label.update(f"ANE Usage: {metrics.ane_usage:.1f}%")
         else:
-            ane_widget.update("N/A")
+            ane_label.update("ANE Usage: N/A")
         
-        # CPU Power
-        cpu_power_widget = self.query_one("#cpu-power-value", Static)
+        # CPU Power - update label with value
+        cpu_power_label = self.query_one("#cpu-power-label", Static)
         if metrics.cpu_power is not None:
-            cpu_power_widget.update(f"{metrics.cpu_power:.2f} W")
+            cpu_power_label.update(f"CPU Power: {metrics.cpu_power:.2f} W")
         else:
-            cpu_power_widget.update("N/A")
+            cpu_power_label.update("CPU Power: N/A")
         
-        # GPU Power
-        gpu_power_widget = self.query_one("#gpu-power-value", Static)
+        # GPU Power - update label with value
+        gpu_power_label = self.query_one("#gpu-power-label", Static)
         if metrics.gpu_power is not None:
-            gpu_power_widget.update(f"{metrics.gpu_power:.2f} W")
+            gpu_power_label.update(f"GPU Power: {metrics.gpu_power:.2f} W")
         else:
-            gpu_power_widget.update("N/A")
+            gpu_power_label.update("GPU Power: N/A")
         
-        # ANE Power
-        ane_power_widget = self.query_one("#ane-power-value", Static)
+        # ANE Power - update label with value
+        ane_power_label = self.query_one("#ane-power-label", Static)
         if metrics.ane_power is not None:
-            ane_power_widget.update(f"{metrics.ane_power:.2f} W")
+            ane_power_label.update(f"ANE Power: {metrics.ane_power:.2f} W")
         else:
-            ane_power_widget.update("N/A")
+            ane_power_label.update("ANE Power: N/A")
         
-        # System Power
-        system_power_widget = self.query_one("#system-power-value", Static)
+        # System Power - update label with value
+        system_power_label = self.query_one("#system-power-label", Static)
         if metrics.system_power is not None:
-            system_power_widget.update(f"{metrics.system_power:.2f} W")
+            system_power_label.update(f"System Power: {metrics.system_power:.2f} W")
         else:
-            system_power_widget.update("N/A")
+            system_power_label.update("System Power: N/A")
         
         # Update charts
         self._update_charts()
     
     def _update_charts(self) -> None:
         """Update history charts"""
-        # CPU Usage Chart
+        # CPU Usage Chart - use full height chart
         cpu_values = self.history.cpu_percent.get_values()
         if cpu_values:
-            cpu_chart = self.chart_renderer.render_sparkline(cpu_values, width=50)
+            cpu_chart = self.chart_renderer.render(cpu_values, min_value=0, max_value=100)
             try:
                 cpu_chart_widget = self.query_one("#cpu-chart", Static)
                 cpu_chart_widget.update(cpu_chart)
@@ -261,10 +238,10 @@ class YamonApp(App):
                 # Widget might not exist yet
                 pass
         
-        # Memory Usage Chart
+        # Memory Usage Chart - use full height chart
         memory_values = self.history.memory_percent.get_values()
         if memory_values:
-            memory_chart = self.chart_renderer.render_sparkline(memory_values, width=50)
+            memory_chart = self.chart_renderer.render(memory_values, min_value=0, max_value=100)
             try:
                 memory_chart_widget = self.query_one("#memory-chart", Static)
                 memory_chart_widget.update(memory_chart)
@@ -288,7 +265,9 @@ class YamonApp(App):
                 combined.append(max(sent_val, recv_val))  # Show the higher value
             
             if combined:
-                network_chart = self.chart_renderer.render_sparkline(combined, width=50)
+                # Find max value for scaling
+                max_val = max(combined) if combined else 1
+                network_chart = self.chart_renderer.render(combined, min_value=0, max_value=max(1, max_val * 1.1))
                 try:
                     network_chart_widget = self.query_one("#network-chart", Static)
                     network_chart_widget.update(network_chart)
@@ -315,7 +294,9 @@ class YamonApp(App):
                 combined_power.append(cpu_val + gpu_val + ane_val)  # Sum of all power
             
             if combined_power:
-                power_chart = self.chart_renderer.render_sparkline(combined_power, width=50)
+                # Find max value for scaling
+                max_power = max(combined_power) if combined_power else 1
+                power_chart = self.chart_renderer.render(combined_power, min_value=0, max_value=max(1, max_power * 1.1))
                 try:
                     power_chart_widget = self.query_one("#power-chart", Static)
                     power_chart_widget.update(power_chart)
