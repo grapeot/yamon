@@ -232,9 +232,31 @@ class AppleAPICollector:
         
         # Try multiple patterns for each metric
         # powermetrics output format can vary, try common patterns
+        # Check for mW unit indicators first
+        mw_patterns = [
+            r'CPU Power:\s*([\d.]+)\s*mW',  # "CPU Power: 10555 mW"
+            r'GPU Power:\s*([\d.]+)\s*mW',
+            r'ANE Power:\s*([\d.]+)\s*mW',
+        ]
+        
+        # Extract with mW unit
+        for pattern in mw_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+            if match:
+                try:
+                    value = float(match.group(1)) / 1000.0  # Convert mW to W
+                    if 'CPU' in pattern.upper():
+                        metrics.cpu_power = value
+                    elif 'GPU' in pattern.upper():
+                        metrics.gpu_power = value
+                    elif 'ANE' in pattern.upper():
+                        metrics.ane_power = value
+                except (ValueError, IndexError):
+                    pass
+        
         cpu_patterns = [
             r'CPU Power:\s*([\d.]+)\s*W',  # "CPU Power: 5.971 W"
-            r'CPU.*?power[:\s]+([\d.]+)',  # "CPU power: 5.971"
+            r'CPU.*?power[:\s]+([\d.]+)',  # "CPU power: 5.971" or "CPU power: 10555"
             r'processor.*?power[:\s]+([\d.]+)',
             r'cpu_power[:\s]+([\d.]+)',
             r'CPU.*?([\d.]+)\s*W\s*\(average\)',  # "CPU Power: 5.971 W (average)"
@@ -256,11 +278,19 @@ class AppleAPICollector:
         ]
         
         # Extract CPU power
+        # Note: powermetrics may output in mW (milliwatts) or W (watts)
+        # Check for unit indicators and convert accordingly
         for pattern in cpu_patterns:
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
             if match:
                 try:
-                    metrics.cpu_power = float(match.group(1))
+                    value = float(match.group(1))
+                    # Check if the pattern or surrounding text indicates mW
+                    # If value > 100, it's likely mW (normal CPU power is 1-50W)
+                    if value > 100:
+                        metrics.cpu_power = value / 1000.0  # Convert mW to W
+                    else:
+                        metrics.cpu_power = value
                     break
                 except (ValueError, IndexError):
                     continue
@@ -270,7 +300,12 @@ class AppleAPICollector:
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
             if match:
                 try:
-                    metrics.gpu_power = float(match.group(1))
+                    value = float(match.group(1))
+                    # GPU power typically 0.5-30W, if > 100 likely mW
+                    if value > 100:
+                        metrics.gpu_power = value / 1000.0  # Convert mW to W
+                    else:
+                        metrics.gpu_power = value
                     break
                 except (ValueError, IndexError):
                     continue
@@ -280,7 +315,12 @@ class AppleAPICollector:
             match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
             if match:
                 try:
-                    metrics.ane_power = float(match.group(1))
+                    value = float(match.group(1))
+                    # ANE power typically 0-10W, if > 100 likely mW
+                    if value > 100:
+                        metrics.ane_power = value / 1000.0  # Convert mW to W
+                    else:
+                        metrics.ane_power = value
                     break
                 except (ValueError, IndexError):
                     continue
