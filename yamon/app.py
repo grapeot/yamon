@@ -36,23 +36,20 @@ class YamonApp(App):
         height: 1fr;
     }
     
-    .metrics-grid {
-        grid-size-columns: 2;
-        grid-gutter: 1;
+    Horizontal {
+        width: 1fr;
+    }
+    
+    Vertical {
+        width: 1fr;
         padding: 1;
     }
     
     .metric-box {
-        height: 3;
         border: solid $primary;
         padding: 1;
         width: 1fr;
-    }
-    
-    #cpu-value, #memory-value, #network-up-value, #network-down-value,
-    #gpu-value, #ane-value, #cpu-power-value, #gpu-power-value,
-    #ane-power-value, #system-power-value {
-        content-align: left middle;
+        min-height: 3;
     }
     
     #cpu-label, #memory-label, #network-up-label, #network-down-label,
@@ -146,7 +143,6 @@ class YamonApp(App):
         cpu_widget = self.query_one("#cpu-value", Static)
         cpu_text = f"{metrics.cpu_percent:.1f}%"
         cpu_widget.update(cpu_text)
-        cpu_widget.refresh()
         
         # Memory
         memory_widget = self.query_one("#memory-value", Static)
