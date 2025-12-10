@@ -46,6 +46,12 @@ class YamonApp(App):
         height: 3;
         border: solid $primary;
         padding: 1;
+        width: 1fr;
+    }
+    
+    #cpu-value, #memory-value, #network-up-value, #network-down-value,
+    #gpu-value, #ane-value, #cpu-power-value, #gpu-power-value,
+    #ane-power-value, #system-power-value {
         content-align: left middle;
     }
     
@@ -85,10 +91,10 @@ class YamonApp(App):
             with Horizontal():
                 with Vertical():
                     yield Static("CPU Usage", id="cpu-label")
-                    yield Static("Loading...", classes="metric-box", id="cpu-value")
+                    yield Static("0.0%", classes="metric-box", id="cpu-value")
                     
                     yield Static("Memory Usage", id="memory-label")
-                    yield Static("Loading...", classes="metric-box", id="memory-value")
+                    yield Static("0.0 B / 0.0 B (0.0%)", classes="metric-box", id="memory-value")
                     
                     yield Static("Network ↑ Upload", id="network-up-label")
                     yield Static("0.0 B/s", classes="metric-box", id="network-up-value")
@@ -128,27 +134,39 @@ class YamonApp(App):
     
     def update_metrics(self) -> None:
         """Update all metrics"""
-        metrics = self.collector.collect()
+        try:
+            metrics = self.collector.collect()
+        except Exception as e:
+            # If collection fails, show error
+            error_widget = self.query_one("#cpu-value", Static)
+            error_widget.update(f"Error: {e}")
+            return
         
         # CPU
         cpu_widget = self.query_one("#cpu-value", Static)
-        cpu_widget.update(f"{metrics.cpu_percent:.1f}%")
+        cpu_text = f"{metrics.cpu_percent:.1f}%"
+        cpu_widget.update(cpu_text)
+        cpu_widget.refresh()
         
         # Memory
         memory_widget = self.query_one("#memory-value", Static)
         memory_used = self.collector.format_bytes(metrics.memory_used)
         memory_total = self.collector.format_bytes(metrics.memory_total)
-        memory_widget.update(f"{memory_used} / {memory_total} ({metrics.memory_percent:.1f}%)")
+        memory_text = f"{memory_used} / {memory_total} ({metrics.memory_percent:.1f}%)"
+        memory_widget.update(memory_text)
+        memory_widget.refresh()
         
         # Network Upload
         network_up_widget = self.query_one("#network-up-value", Static)
         sent_rate_str = self.collector.format_bytes(int(metrics.network_sent_rate))
         network_up_widget.update(f"{sent_rate_str}/s")
+        network_up_widget.refresh()
         
         # Network Download
         network_down_widget = self.query_one("#network-down-value", Static)
         recv_rate_str = self.collector.format_bytes(int(metrics.network_recv_rate))
         network_down_widget.update(f"{recv_rate_str}/s")
+        network_down_widget.refresh()
         
         # CPU Cores
         cpu_cores_widget = self.query_one("#cpu-cores-value", Static)
