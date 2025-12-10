@@ -75,12 +75,14 @@ class YamonApp(App):
     #charts-container {
         margin-top: 1;
         padding: 1;
+        height: auto;
     }
     
     .chart-label {
         text-style: bold;
         padding: 0 1;
         margin-top: 1;
+        height: auto;
     }
     
     .chart-box {
@@ -88,6 +90,9 @@ class YamonApp(App):
         padding: 1;
         height: auto;
         width: 1fr;
+        min-height: 2;
+        margin-top: 0;
+        margin-bottom: 1;
     }
     """
     
@@ -112,15 +117,18 @@ class YamonApp(App):
                 with Vertical(id="left-column"):
                     yield Static("CPU Usage", id="cpu-label")
                     yield Static("0.0%", classes="metric-box", id="cpu-value")
+                    yield Static("", classes="chart-box", id="cpu-chart")
                     
                     yield Static("Memory Usage", id="memory-label")
                     yield Static("0.0 B / 0.0 B (0.0%)", classes="metric-box", id="memory-value")
+                    yield Static("", classes="chart-box", id="memory-chart")
                     
                     yield Static("Network ↑ Upload", id="network-up-label")
                     yield Static("0.0 B/s", classes="metric-box", id="network-up-value")
                     
                     yield Static("Network ↓ Download", id="network-down-label")
                     yield Static("0.0 B/s", classes="metric-box", id="network-down-value")
+                    yield Static("", classes="chart-box", id="network-chart")
                     
                     yield Static("GPU Usage", id="gpu-label")
                     yield Static("N/A", classes="metric-box", id="gpu-value")
@@ -140,24 +148,11 @@ class YamonApp(App):
                     
                     yield Static("System Power", id="system-power-label")
                     yield Static("N/A", classes="metric-box", id="system-power-value")
+                    yield Static("", classes="chart-box", id="power-chart")
             
             with Container(id="cpu-cores-container"):
                 yield Static("CPU Cores:", classes="cpu-cores", id="cpu-cores-label")
                 yield Static("N/A", classes="cpu-cores", id="cpu-cores-value")
-            
-            # History charts section
-            with Container(id="charts-container"):
-                yield Static("CPU Usage History", classes="chart-label", id="cpu-chart-label")
-                yield Static("", classes="chart-box", id="cpu-chart")
-                
-                yield Static("Memory Usage History", classes="chart-label", id="memory-chart-label")
-                yield Static("", classes="chart-box", id="memory-chart")
-                
-                yield Static("Network History", classes="chart-label", id="network-chart-label")
-                yield Static("", classes="chart-box", id="network-chart")
-                
-                yield Static("Power History", classes="chart-label", id="power-chart-label")
-                yield Static("", classes="chart-box", id="power-chart")
         
         yield Footer()
     
@@ -259,15 +254,22 @@ class YamonApp(App):
         cpu_values = self.history.cpu_percent.get_values()
         if cpu_values:
             cpu_chart = self.chart_renderer.render_sparkline(cpu_values, width=50)
-            cpu_chart_widget = self.query_one("#cpu-chart", Static)
-            cpu_chart_widget.update(cpu_chart)
+            try:
+                cpu_chart_widget = self.query_one("#cpu-chart", Static)
+                cpu_chart_widget.update(cpu_chart)
+            except Exception as e:
+                # Widget might not exist yet
+                pass
         
         # Memory Usage Chart
         memory_values = self.history.memory_percent.get_values()
         if memory_values:
             memory_chart = self.chart_renderer.render_sparkline(memory_values, width=50)
-            memory_chart_widget = self.query_one("#memory-chart", Static)
-            memory_chart_widget.update(memory_chart)
+            try:
+                memory_chart_widget = self.query_one("#memory-chart", Static)
+                memory_chart_widget.update(memory_chart)
+            except Exception:
+                pass
         
         # Network Chart (combine upload and download)
         sent_values = self.history.network_sent_rate.get_values()
@@ -287,8 +289,11 @@ class YamonApp(App):
             
             if combined:
                 network_chart = self.chart_renderer.render_sparkline(combined, width=50)
-                network_chart_widget = self.query_one("#network-chart", Static)
-                network_chart_widget.update(network_chart)
+                try:
+                    network_chart_widget = self.query_one("#network-chart", Static)
+                    network_chart_widget.update(network_chart)
+                except Exception:
+                    pass
         
         # Power Chart (combine CPU, GPU, ANE)
         cpu_power_values = self.history.cpu_power.get_values()
@@ -311,8 +316,11 @@ class YamonApp(App):
             
             if combined_power:
                 power_chart = self.chart_renderer.render_sparkline(combined_power, width=50)
-                power_chart_widget = self.query_one("#power-chart", Static)
-                power_chart_widget.update(power_chart)
+                try:
+                    power_chart_widget = self.query_one("#power-chart", Static)
+                    power_chart_widget.update(power_chart)
+                except Exception:
+                    pass
     
     def action_refresh(self) -> None:
         """Manual refresh"""
