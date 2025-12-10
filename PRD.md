@@ -3,7 +3,7 @@
 ## 1. 项目概述
 
 ### 1.1 项目名称
-Mac System Monitor TUI（暂定名称：macmon-tui）
+yamon - Mac System Monitor TUI
 
 ### 1.2 项目目标
 开发一个功能强大的 macOS Terminal UI (TUI) 系统监控工具，结合 bashtop 的历史图表功能和 MacMon 的 Apple Silicon 深度监控能力，为 Mac 用户提供实时和历史系统性能监控。
@@ -262,10 +262,11 @@ macmon-tui/
 - [ ] 简单的历史图表显示
 
 ### 5.2 第二阶段：Apple Silicon 支持
-- [ ] 原生 API 绑定开发（IOReport、SMC、IOKit）
-- [ ] GPU 监控实现
-- [ ] ANE 监控实现
-- [ ] 功耗监控实现
+- [x] powermetrics 集成（需要 sudo）
+- [x] GPU 监控实现
+- [x] ANE 监控实现
+- [x] 功耗监控实现
+- [ ] 原生 API 绑定开发（IOReport、SMC、IOKit，无需 sudo）
 - [ ] E-Core/P-Core 区分
 
 ### 5.3 第三阶段：UI 增强

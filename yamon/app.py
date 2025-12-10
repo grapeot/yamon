@@ -32,27 +32,37 @@ class YamonApp(App):
         background: $surface;
     }
     
+    #main-container {
+        height: 1fr;
+    }
+    
     .metrics-grid {
         grid-size: 2;
         grid-gutter: 1;
         padding: 1;
+        height: auto;
+        grid-rows: 10;
     }
     
     .metric-box {
         height: 3;
         border: solid $primary;
         padding: 1;
+        content-align: left middle;
     }
     
     .metric-label {
         text-style: bold;
     }
     
+    #cpu-cores-container {
+        margin-top: 1;
+    }
+    
     .cpu-cores {
         height: auto;
         border: solid $primary;
         padding: 1;
-        margin-top: 1;
     }
     """
     
@@ -78,14 +88,33 @@ class YamonApp(App):
                 yield Static("Memory Usage", classes="metric-box metric-label", id="memory-label")
                 yield Static("N/A", classes="metric-box", id="memory-value")
                 
-                yield Static("Network Upload", classes="metric-box metric-label", id="network-up-label")
-                yield Static("N/A", classes="metric-box", id="network-up-value")
+                yield Static("Network ↑ Upload", classes="metric-box metric-label", id="network-up-label")
+                yield Static("0.0 B/s", classes="metric-box", id="network-up-value")
                 
-                yield Static("Network Download", classes="metric-box metric-label", id="network-down-label")
-                yield Static("N/A", classes="metric-box", id="network-down-value")
+                yield Static("Network ↓ Download", classes="metric-box metric-label", id="network-down-label")
+                yield Static("0.0 B/s", classes="metric-box", id="network-down-value")
+                
+                yield Static("GPU Usage", classes="metric-box metric-label", id="gpu-label")
+                yield Static("N/A", classes="metric-box", id="gpu-value")
+                
+                yield Static("ANE Usage", classes="metric-box metric-label", id="ane-label")
+                yield Static("N/A", classes="metric-box", id="ane-value")
+                
+                yield Static("CPU Power", classes="metric-box metric-label", id="cpu-power-label")
+                yield Static("N/A", classes="metric-box", id="cpu-power-value")
+                
+                yield Static("GPU Power", classes="metric-box metric-label", id="gpu-power-label")
+                yield Static("N/A", classes="metric-box", id="gpu-power-value")
+                
+                yield Static("ANE Power", classes="metric-box metric-label", id="ane-power-label")
+                yield Static("N/A", classes="metric-box", id="ane-power-value")
+                
+                yield Static("System Power", classes="metric-box metric-label", id="system-power-label")
+                yield Static("N/A", classes="metric-box", id="system-power-value")
             
-            yield Static("CPU Cores:", classes="cpu-cores", id="cpu-cores-label")
-            yield Static("N/A", classes="cpu-cores", id="cpu-cores-value")
+            with Container(id="cpu-cores-container"):
+                yield Static("CPU Cores:", classes="cpu-cores", id="cpu-cores-label")
+                yield Static("N/A", classes="cpu-cores", id="cpu-cores-value")
         
         yield Footer()
     
@@ -110,16 +139,60 @@ class YamonApp(App):
         
         # Network Upload
         network_up_widget = self.query_one("#network-up-value", Static)
-        network_up_widget.update(f"{self.collector.format_bytes(metrics.network_sent_rate)}/s")
+        sent_rate_str = self.collector.format_bytes(int(metrics.network_sent_rate))
+        network_up_widget.update(f"{sent_rate_str}/s")
         
         # Network Download
         network_down_widget = self.query_one("#network-down-value", Static)
-        network_down_widget.update(f"{self.collector.format_bytes(metrics.network_recv_rate)}/s")
+        recv_rate_str = self.collector.format_bytes(int(metrics.network_recv_rate))
+        network_down_widget.update(f"{recv_rate_str}/s")
         
         # CPU Cores
         cpu_cores_widget = self.query_one("#cpu-cores-value", Static)
         cores_str = " | ".join([f"C{i}: {core:.1f}%" for i, core in enumerate(metrics.cpu_per_core)])
         cpu_cores_widget.update(cores_str)
+        
+        # GPU Usage
+        gpu_widget = self.query_one("#gpu-value", Static)
+        if metrics.gpu_usage is not None:
+            gpu_widget.update(f"{metrics.gpu_usage:.1f}%")
+        else:
+            gpu_widget.update("N/A")
+        
+        # ANE Usage
+        ane_widget = self.query_one("#ane-value", Static)
+        if metrics.ane_usage is not None:
+            ane_widget.update(f"{metrics.ane_usage:.1f}%")
+        else:
+            ane_widget.update("N/A")
+        
+        # CPU Power
+        cpu_power_widget = self.query_one("#cpu-power-value", Static)
+        if metrics.cpu_power is not None:
+            cpu_power_widget.update(f"{metrics.cpu_power:.2f} W")
+        else:
+            cpu_power_widget.update("N/A")
+        
+        # GPU Power
+        gpu_power_widget = self.query_one("#gpu-power-value", Static)
+        if metrics.gpu_power is not None:
+            gpu_power_widget.update(f"{metrics.gpu_power:.2f} W")
+        else:
+            gpu_power_widget.update("N/A")
+        
+        # ANE Power
+        ane_power_widget = self.query_one("#ane-power-value", Static)
+        if metrics.ane_power is not None:
+            ane_power_widget.update(f"{metrics.ane_power:.2f} W")
+        else:
+            ane_power_widget.update("N/A")
+        
+        # System Power
+        system_power_widget = self.query_one("#system-power-value", Static)
+        if metrics.system_power is not None:
+            system_power_widget.update(f"{metrics.system_power:.2f} W")
+        else:
+            system_power_widget.update("N/A")
     
     def action_refresh(self) -> None:
         """Manual refresh"""

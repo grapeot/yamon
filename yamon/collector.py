@@ -1,6 +1,9 @@
 """System metrics collector"""
 
 import psutil
+import subprocess
+import json
+import re
 from typing import Dict, List, Optional
 from dataclasses import dataclass
 
@@ -25,15 +28,35 @@ class SystemMetrics:
     network_recv: int      # bytes
     network_sent_rate: float  # bytes/sec
     network_recv_rate: float  # bytes/sec
+    
+    # Apple Silicon specific (optional)
+    cpu_power: Optional[float] = None  # watts
+    gpu_power: Optional[float] = None  # watts
+    ane_power: Optional[float] = None  # watts
+    dram_power: Optional[float] = None  # watts
+    system_power: Optional[float] = None  # watts
+    gpu_usage: Optional[float] = None  # percentage
+    gpu_freq_mhz: Optional[float] = None  # MHz
+    ane_usage: Optional[float] = None  # percentage
 
 
 class MetricsCollector:
-    """Collect system metrics using psutil"""
+    """Collect system metrics using psutil and Apple APIs"""
     
     def __init__(self):
         self._last_network_sent = 0
         self._last_network_recv = 0
         self._last_time = None
+        self._apple_collector = None
+        self._init_apple_collector()
+    
+    def _init_apple_collector(self):
+        """Initialize Apple API collector if available"""
+        try:
+            from yamon.apple_api import AppleAPICollector
+            self._apple_collector = AppleAPICollector()
+        except Exception:
+            self._apple_collector = None
     
     def collect(self) -> SystemMetrics:
         """Collect current system metrics"""
@@ -70,6 +93,11 @@ class MetricsCollector:
         self._last_network_recv = net_io.bytes_recv
         self._last_time = current_time
         
+        # Try to get Apple Silicon metrics
+        apple_metrics = None
+        if self._apple_collector:
+            apple_metrics = self._apple_collector.collect()
+        
         return SystemMetrics(
             cpu_percent=cpu_percent,
             cpu_per_core=cpu_per_core,
@@ -83,6 +111,14 @@ class MetricsCollector:
             network_recv=net_io.bytes_recv,
             network_sent_rate=network_sent_rate,
             network_recv_rate=network_recv_rate,
+            cpu_power=apple_metrics.cpu_power if apple_metrics else None,
+            gpu_power=apple_metrics.gpu_power if apple_metrics else None,
+            ane_power=apple_metrics.ane_power if apple_metrics else None,
+            dram_power=apple_metrics.dram_power if apple_metrics else None,
+            system_power=apple_metrics.system_power if apple_metrics else None,
+            gpu_usage=apple_metrics.gpu_usage if apple_metrics else None,
+            gpu_freq_mhz=apple_metrics.gpu_freq_mhz if apple_metrics else None,
+            ane_usage=apple_metrics.ane_usage if apple_metrics else None,
         )
     
     def format_bytes(self, bytes: int) -> str:
