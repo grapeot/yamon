@@ -8,6 +8,8 @@ from textual.timer import Timer
 import asyncio
 
 from yamon.collector import MetricsCollector
+from yamon.history import MetricsHistory
+from yamon.chart import ChartRenderer
 
 
 class MetricsDisplay(Static):
@@ -69,6 +71,24 @@ class YamonApp(App):
         border: solid $primary;
         padding: 1;
     }
+    
+    #charts-container {
+        margin-top: 1;
+        padding: 1;
+    }
+    
+    .chart-label {
+        text-style: bold;
+        padding: 0 1;
+        margin-top: 1;
+    }
+    
+    .chart-box {
+        border: solid $primary;
+        padding: 1;
+        height: auto;
+        width: 1fr;
+    }
     """
     
     BINDINGS = [
@@ -79,6 +99,8 @@ class YamonApp(App):
     def __init__(self):
         super().__init__()
         self.collector = MetricsCollector()
+        self.history = MetricsHistory(max_size=60)  # 60 seconds of history
+        self.chart_renderer = ChartRenderer(width=50, height=8, use_unicode=True)
         self.update_timer: Timer | None = None
     
     def compose(self) -> ComposeResult:
@@ -122,6 +144,20 @@ class YamonApp(App):
             with Container(id="cpu-cores-container"):
                 yield Static("CPU Cores:", classes="cpu-cores", id="cpu-cores-label")
                 yield Static("N/A", classes="cpu-cores", id="cpu-cores-value")
+            
+            # History charts section
+            with Container(id="charts-container"):
+                yield Static("CPU Usage History", classes="chart-label", id="cpu-chart-label")
+                yield Static("", classes="chart-box", id="cpu-chart")
+                
+                yield Static("Memory Usage History", classes="chart-label", id="memory-chart-label")
+                yield Static("", classes="chart-box", id="memory-chart")
+                
+                yield Static("Network History", classes="chart-label", id="network-chart-label")
+                yield Static("", classes="chart-box", id="network-chart")
+                
+                yield Static("Power History", classes="chart-label", id="power-chart-label")
+                yield Static("", classes="chart-box", id="power-chart")
         
         yield Footer()
     
@@ -134,6 +170,8 @@ class YamonApp(App):
         """Update all metrics"""
         try:
             metrics = self.collector.collect()
+            # Add to history
+            self.history.add_metrics(metrics)
         except Exception as e:
             # If collection fails, show error
             error_widget = self.query_one("#cpu-value", Static)
@@ -211,6 +249,70 @@ class YamonApp(App):
             system_power_widget.update(f"{metrics.system_power:.2f} W")
         else:
             system_power_widget.update("N/A")
+        
+        # Update charts
+        self._update_charts()
+    
+    def _update_charts(self) -> None:
+        """Update history charts"""
+        # CPU Usage Chart
+        cpu_values = self.history.cpu_percent.get_values()
+        if cpu_values:
+            cpu_chart = self.chart_renderer.render_sparkline(cpu_values, width=50)
+            cpu_chart_widget = self.query_one("#cpu-chart", Static)
+            cpu_chart_widget.update(cpu_chart)
+        
+        # Memory Usage Chart
+        memory_values = self.history.memory_percent.get_values()
+        if memory_values:
+            memory_chart = self.chart_renderer.render_sparkline(memory_values, width=50)
+            memory_chart_widget = self.query_one("#memory-chart", Static)
+            memory_chart_widget.update(memory_chart)
+        
+        # Network Chart (combine upload and download)
+        sent_values = self.history.network_sent_rate.get_values()
+        recv_values = self.history.network_recv_rate.get_values()
+        if sent_values or recv_values:
+            # Normalize network values for display (convert to MB/s)
+            sent_mb = [v / (1024 * 1024) for v in sent_values] if sent_values else []
+            recv_mb = [v / (1024 * 1024) for v in recv_values] if recv_values else []
+            
+            # Combine into a single chart showing both
+            max_len = max(len(sent_mb), len(recv_mb))
+            combined = []
+            for i in range(max_len):
+                sent_val = sent_mb[i] if i < len(sent_mb) else 0
+                recv_val = recv_mb[i] if i < len(recv_mb) else 0
+                combined.append(max(sent_val, recv_val))  # Show the higher value
+            
+            if combined:
+                network_chart = self.chart_renderer.render_sparkline(combined, width=50)
+                network_chart_widget = self.query_one("#network-chart", Static)
+                network_chart_widget.update(network_chart)
+        
+        # Power Chart (combine CPU, GPU, ANE)
+        cpu_power_values = self.history.cpu_power.get_values()
+        gpu_power_values = self.history.gpu_power.get_values()
+        ane_power_values = self.history.ane_power.get_values()
+        
+        if cpu_power_values or gpu_power_values or ane_power_values:
+            # Combine power values (sum or max)
+            max_len = max(
+                len(cpu_power_values) if cpu_power_values else 0,
+                len(gpu_power_values) if gpu_power_values else 0,
+                len(ane_power_values) if ane_power_values else 0
+            )
+            combined_power = []
+            for i in range(max_len):
+                cpu_val = cpu_power_values[i] if i < len(cpu_power_values) else 0
+                gpu_val = gpu_power_values[i] if i < len(gpu_power_values) else 0
+                ane_val = ane_power_values[i] if i < len(ane_power_values) else 0
+                combined_power.append(cpu_val + gpu_val + ane_val)  # Sum of all power
+            
+            if combined_power:
+                power_chart = self.chart_renderer.render_sparkline(combined_power, width=50)
+                power_chart_widget = self.query_one("#power-chart", Static)
+                power_chart_widget.update(power_chart)
     
     def action_refresh(self) -> None:
         """Manual refresh"""
