@@ -1,7 +1,7 @@
 """Main TUI application"""
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Grid
+from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import Static, Header, Footer
 from textual import work
 from textual.timer import Timer
@@ -37,11 +37,9 @@ class YamonApp(App):
     }
     
     .metrics-grid {
-        grid-size: 2;
+        grid-size-columns: 2;
         grid-gutter: 1;
         padding: 1;
-        height: auto;
-        grid-rows: 10;
     }
     
     .metric-box {
@@ -51,8 +49,11 @@ class YamonApp(App):
         content-align: left middle;
     }
     
-    .metric-label {
+    #cpu-label, #memory-label, #network-up-label, #network-down-label,
+    #gpu-label, #ane-label, #cpu-power-label, #gpu-power-label,
+    #ane-power-label, #system-power-label {
         text-style: bold;
+        padding: 0 1;
     }
     
     #cpu-cores-container {
@@ -81,36 +82,38 @@ class YamonApp(App):
         yield Header(show_clock=True)
         
         with Container(id="main-container"):
-            with Grid(classes="metrics-grid"):
-                yield Static("CPU Usage", classes="metric-box metric-label", id="cpu-label")
-                yield Static("N/A", classes="metric-box", id="cpu-value")
+            with Horizontal():
+                with Vertical():
+                    yield Static("CPU Usage", id="cpu-label")
+                    yield Static("Loading...", classes="metric-box", id="cpu-value")
+                    
+                    yield Static("Memory Usage", id="memory-label")
+                    yield Static("Loading...", classes="metric-box", id="memory-value")
+                    
+                    yield Static("Network ↑ Upload", id="network-up-label")
+                    yield Static("0.0 B/s", classes="metric-box", id="network-up-value")
+                    
+                    yield Static("Network ↓ Download", id="network-down-label")
+                    yield Static("0.0 B/s", classes="metric-box", id="network-down-value")
+                    
+                    yield Static("GPU Usage", id="gpu-label")
+                    yield Static("N/A", classes="metric-box", id="gpu-value")
+                    
+                    yield Static("ANE Usage", id="ane-label")
+                    yield Static("N/A", classes="metric-box", id="ane-value")
                 
-                yield Static("Memory Usage", classes="metric-box metric-label", id="memory-label")
-                yield Static("N/A", classes="metric-box", id="memory-value")
-                
-                yield Static("Network ↑ Upload", classes="metric-box metric-label", id="network-up-label")
-                yield Static("0.0 B/s", classes="metric-box", id="network-up-value")
-                
-                yield Static("Network ↓ Download", classes="metric-box metric-label", id="network-down-label")
-                yield Static("0.0 B/s", classes="metric-box", id="network-down-value")
-                
-                yield Static("GPU Usage", classes="metric-box metric-label", id="gpu-label")
-                yield Static("N/A", classes="metric-box", id="gpu-value")
-                
-                yield Static("ANE Usage", classes="metric-box metric-label", id="ane-label")
-                yield Static("N/A", classes="metric-box", id="ane-value")
-                
-                yield Static("CPU Power", classes="metric-box metric-label", id="cpu-power-label")
-                yield Static("N/A", classes="metric-box", id="cpu-power-value")
-                
-                yield Static("GPU Power", classes="metric-box metric-label", id="gpu-power-label")
-                yield Static("N/A", classes="metric-box", id="gpu-power-value")
-                
-                yield Static("ANE Power", classes="metric-box metric-label", id="ane-power-label")
-                yield Static("N/A", classes="metric-box", id="ane-power-value")
-                
-                yield Static("System Power", classes="metric-box metric-label", id="system-power-label")
-                yield Static("N/A", classes="metric-box", id="system-power-value")
+                with Vertical():
+                    yield Static("CPU Power", id="cpu-power-label")
+                    yield Static("N/A", classes="metric-box", id="cpu-power-value")
+                    
+                    yield Static("GPU Power", id="gpu-power-label")
+                    yield Static("N/A", classes="metric-box", id="gpu-power-value")
+                    
+                    yield Static("ANE Power", id="ane-power-label")
+                    yield Static("N/A", classes="metric-box", id="ane-power-value")
+                    
+                    yield Static("System Power", id="system-power-label")
+                    yield Static("N/A", classes="metric-box", id="system-power-value")
             
             with Container(id="cpu-cores-container"):
                 yield Static("CPU Cores:", classes="cpu-cores", id="cpu-cores-label")
