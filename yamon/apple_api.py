@@ -231,24 +231,28 @@ class AppleAPICollector:
         # "GPU Power: 1.435 W (average)"
         
         # Try multiple patterns for each metric
+        # powermetrics output format can vary, try common patterns
         cpu_patterns = [
-            r'CPU Power:\s*([\d.]+)\s*W',
-            r'CPU.*?power[:\s]+([\d.]+)',
+            r'CPU Power:\s*([\d.]+)\s*W',  # "CPU Power: 5.971 W"
+            r'CPU.*?power[:\s]+([\d.]+)',  # "CPU power: 5.971"
             r'processor.*?power[:\s]+([\d.]+)',
             r'cpu_power[:\s]+([\d.]+)',
+            r'CPU.*?([\d.]+)\s*W\s*\(average\)',  # "CPU Power: 5.971 W (average)"
         ]
         
         gpu_patterns = [
-            r'GPU Power:\s*([\d.]+)\s*W',
+            r'GPU Power:\s*([\d.]+)\s*W',  # "GPU Power: 1.435 W"
             r'GPU.*?power[:\s]+([\d.]+)',
             r'gpu_power[:\s]+([\d.]+)',
+            r'GPU.*?([\d.]+)\s*W\s*\(average\)',
         ]
         
         ane_patterns = [
-            r'ANE Power:\s*([\d.]+)\s*W',
+            r'ANE Power:\s*([\d.]+)\s*W',  # "ANE Power: 0.000 W"
             r'ANE.*?power[:\s]+([\d.]+)',
             r'ane_power[:\s]+([\d.]+)',
             r'Neural Engine.*?power[:\s]+([\d.]+)',
+            r'ANE.*?([\d.]+)\s*W\s*\(average\)',
         ]
         
         # Extract CPU power
