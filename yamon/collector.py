@@ -54,7 +54,10 @@ class MetricsCollector:
         """Initialize Apple API collector if available"""
         try:
             from yamon.apple_api import AppleAPICollector
-            self._apple_collector = AppleAPICollector()
+            import os
+            # Enable debug if running with sudo
+            debug = os.geteuid() == 0  # Check if running as root
+            self._apple_collector = AppleAPICollector(debug=debug)
         except Exception:
             self._apple_collector = None
     
