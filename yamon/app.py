@@ -38,9 +38,10 @@ class YamonApp(App):
     
     Horizontal {
         width: 1fr;
+        height: auto;
     }
     
-    Vertical {
+    #left-column, #right-column {
         width: 1fr;
         padding: 1;
     }
@@ -86,7 +87,7 @@ class YamonApp(App):
         
         with Container(id="main-container"):
             with Horizontal():
-                with Vertical():
+                with Vertical(id="left-column"):
                     yield Static("CPU Usage", id="cpu-label")
                     yield Static("0.0%", classes="metric-box", id="cpu-value")
                     
@@ -105,7 +106,7 @@ class YamonApp(App):
                     yield Static("ANE Usage", id="ane-label")
                     yield Static("N/A", classes="metric-box", id="ane-value")
                 
-                with Vertical():
+                with Vertical(id="right-column"):
                     yield Static("CPU Power", id="cpu-power-label")
                     yield Static("N/A", classes="metric-box", id="cpu-power-value")
                     
