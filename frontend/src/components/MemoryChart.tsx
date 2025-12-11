@@ -8,7 +8,7 @@ interface MemoryChartProps {
   history: number[]
 }
 
-export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }: MemoryChartProps) {
+export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
 

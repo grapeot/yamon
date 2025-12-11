@@ -34,13 +34,6 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
     const updatedSentHistory = [...sentHistory, sentRate].slice(-120)
     const updatedRecvHistory = [...recvHistory, recvRate].slice(-120)
 
-    // 计算最大值用于Y轴
-    const maxValue = Math.max(
-      ...updatedSentHistory,
-      ...updatedRecvHistory,
-      1 // 至少为1，避免空图
-    )
-
     const formatBytes = (bytes: number): string => {
       const units = ['B', 'KB', 'MB', 'GB']
       let size = bytes

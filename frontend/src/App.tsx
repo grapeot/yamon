@@ -13,6 +13,8 @@ interface SystemMetrics {
   cpu_percent: number
   cpu_per_core: number[]
   cpu_count: number
+  cpu_p_percent: number
+  cpu_e_percent: number
   memory_percent: number
   memory_total: number
   memory_used: number
@@ -81,17 +83,6 @@ function App() {
       ane_usage: [...prev.ane_usage, typedMetrics.ane_usage || 0].slice(-120),
     }))
   }, [typedMetrics])
-
-  const formatBytes = (bytes: number): string => {
-    const units = ['B', 'KB', 'MB', 'GB', 'TB']
-    let size = bytes
-    let unitIndex = 0
-    while (size >= 1024 && unitIndex < units.length - 1) {
-      size /= 1024
-      unitIndex++
-    }
-    return `${size.toFixed(1)} ${units[unitIndex]}`
-  }
 
   return (
     <div className="app">
