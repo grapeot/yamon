@@ -362,6 +362,8 @@ class AppleAPICollector:
         system_power_patterns = [
             r'Total Power[:\s]+([\d.]+)\s*(?:mW|W)',
             r'System Power[:\s]+([\d.]+)\s*(?:mW|W)',
+            r'PSTR[:\s]+([\d.]+)\s*(?:mW|W)',  # PSTR is System Power from SMC
+            r'Package Power[:\s]+([\d.]+)\s*(?:mW|W)',  # Package power might be system total
             r'Total.*?power[:\s]+([\d.]+)\s*(?:mW|W)',
             r'system_power[:\s]+([\d.]+)',
             r'total_power[:\s]+([\d.]+)',
