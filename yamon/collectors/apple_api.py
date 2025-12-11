@@ -601,31 +601,48 @@ class AppleAPICollector:
                     cpu_numbers = [cpu_num for cpu_num, _ in cpu_freqs]
                     
                     # Try to identify clusters from text
-                    # Look for "E-Cluster" or "P-Cluster" patterns
-                    e_cluster_match = re.search(r'E-Cluster.*?CPU\s+(\d+)', text, re.IGNORECASE | re.DOTALL)
-                    p_cluster_match = re.search(r'P\d*-Cluster.*?CPU\s+(\d+)', text, re.IGNORECASE | re.DOTALL)
+                    # Method 1: Extract all CPU numbers from E-Cluster and P-Cluster sections
+                    e_cluster_section = re.search(r'E-Cluster.*?(?=P\d*-Cluster|$)', text, re.IGNORECASE | re.DOTALL)
+                    p_cluster_section = re.search(r'P\d*-Cluster.*?(?=E-Cluster|$)', text, re.IGNORECASE | re.DOTALL)
                     
                     e_core_indices = []
                     p_core_indices = []
                     
-                    if e_cluster_match and p_cluster_match:
-                        # Find the range of CPUs in each cluster
-                        e_start_cpu = int(e_cluster_match.group(1))
-                        p_start_cpu = int(p_cluster_match.group(1))
+                    if e_cluster_section and p_cluster_section:
+                        # Extract all CPU numbers from each cluster section
+                        e_cluster_cpus = set()
+                        p_cluster_cpus = set()
                         
-                        # Find all CPUs in E-cluster (before P-cluster starts)
+                        # Find all CPU numbers in E-Cluster section
+                        e_cpu_matches = re.findall(r'CPU\s+(\d+)\s+frequency', e_cluster_section.group(0), re.IGNORECASE)
+                        for cpu_str in e_cpu_matches:
+                            e_cluster_cpus.add(int(cpu_str))
+                        
+                        # Find all CPU numbers in P-Cluster section
+                        p_cpu_matches = re.findall(r'CPU\s+(\d+)\s+frequency', p_cluster_section.group(0), re.IGNORECASE)
+                        for cpu_str in p_cpu_matches:
+                            p_cluster_cpus.add(int(cpu_str))
+                        
+                        # Assign CPUs to clusters based on which section they appear in
                         for cpu_num, freq in cpu_freqs:
-                            if cpu_num < p_start_cpu:
+                            if cpu_num in e_cluster_cpus:
                                 e_core_indices.append((cpu_num, freq))
-                            else:
+                            elif cpu_num in p_cluster_cpus:
                                 p_core_indices.append((cpu_num, freq))
-                    else:
-                        # Fallback: Use CPU count to estimate P/E core split
-                        # Common configurations:
-                        # 8 CPUs: 4P + 4E (first 4 are E, last 4 are P)
-                        # 10 CPUs: 8P + 2E (first 2 are E, last 8 are P)
-                        # 12 CPUs: 8P + 4E (first 4 are E, last 8 are P)
-                        # 16 CPUs: 12P + 4E (first 4 are E, last 12 are P)
+                        
+                        if self._debug:
+                            import sys
+                            print(f"[DEBUG] E-Cluster CPUs: {sorted([c for c, _ in e_core_indices])}", file=sys.stderr)
+                            print(f"[DEBUG] P-Cluster CPUs: {sorted([c for c, _ in p_core_indices])}", file=sys.stderr)
+                    
+                    # Fallback: Use CPU count to estimate P/E core split if clusters not found
+                    if not e_core_indices and not p_core_indices:
+                        # Common Apple Silicon configurations:
+                        # M1/M2/M3: 8 CPUs (4P + 4E) - first 4 are E, last 4 are P
+                        # M1 Pro/Max: 10 CPUs (8P + 2E) - first 2 are E, last 8 are P
+                        # M2 Pro/Max: 12 CPUs (8P + 4E) - first 4 are E, last 8 are P
+                        # M3 Pro: 12 CPUs (6P + 6E) - first 6 are E, last 6 are P (ambiguous!)
+                        # M3 Max: 16 CPUs (12P + 4E) - first 4 are E, last 12 are P
                         
                         if total_cpus == 8:
                             e_core_indices = cpu_freqs[:4]
@@ -634,6 +651,8 @@ class AppleAPICollector:
                             e_core_indices = cpu_freqs[:2]
                             p_core_indices = cpu_freqs[2:]
                         elif total_cpus == 12:
+                            # M2 Pro/Max: 8P + 4E OR M3 Pro: 6P + 6E
+                            # Default to M2 Pro/Max configuration (first 4 are E)
                             e_core_indices = cpu_freqs[:4]
                             p_core_indices = cpu_freqs[4:]
                         elif total_cpus == 16:
@@ -644,6 +663,10 @@ class AppleAPICollector:
                             mid = total_cpus // 2
                             e_core_indices = cpu_freqs[:mid]
                             p_core_indices = cpu_freqs[mid:]
+                        
+                        if self._debug:
+                            import sys
+                            print(f"[DEBUG] Using fallback: E-cores={len(e_core_indices)}, P-cores={len(p_core_indices)}", file=sys.stderr)
                     
                     # Extract frequencies
                     if e_core_indices:
