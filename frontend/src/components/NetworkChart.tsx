@@ -78,9 +78,10 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '30%',
+        top: '35%',
         containLabel: true,
       },
+      animation: false,
       xAxis: {
         type: 'category',
         boundaryGap: false,
@@ -111,7 +112,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         {
           name: 'Upload',
           type: 'line',
-          smooth: true,
+          smooth: false,
           showSymbol: false,
           areaStyle: {
             color: {
@@ -133,7 +134,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         {
           name: 'Download',
           type: 'line',
-          smooth: true,
+          smooth: false,
           showSymbol: false,
           areaStyle: {
             color: {

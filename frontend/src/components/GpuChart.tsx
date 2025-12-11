@@ -45,9 +45,10 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '20%',
+        top: '30%',
         containLabel: true,
       },
+      animation: false,
       xAxis: {
         type: 'category',
         boundaryGap: false,
@@ -67,7 +68,7 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
         {
           name: 'GPU Usage',
           type: 'line',
-          smooth: true,
+          smooth: false,
           showSymbol: false,
           areaStyle: {
             color: {

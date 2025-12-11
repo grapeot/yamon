@@ -101,9 +101,10 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '20%',
+        top: '30%',
         containLabel: true,
       },
+      animation: false,
       xAxis: {
         type: 'category',
         boundaryGap: false,
@@ -124,6 +125,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
           name: `P-Cores (${pCoreCount})`,
           type: 'line',
           stack: 'CPU',
+          smooth: false,
           showSymbol: false,
           areaStyle: { 
             opacity: 0.6,
@@ -147,6 +149,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
           name: `E-Cores (${eCoreCount})`,
           type: 'line',
           stack: 'CPU',
+          smooth: false,
           showSymbol: false,
           areaStyle: { 
             opacity: 0.6,

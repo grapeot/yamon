@@ -53,9 +53,10 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '20%',
+        top: '30%',
         containLabel: true,
       },
+      animation: false,
       xAxis: {
         type: 'category',
         boundaryGap: false,
@@ -75,7 +76,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
         {
           name: 'Memory',
           type: 'line',
-          smooth: true,
+          smooth: false,
           showSymbol: false,
           areaStyle: {
             color: {
