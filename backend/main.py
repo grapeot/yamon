@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
+from contextlib import asynccontextmanager
 import os
 
 # Use relative imports when running from backend directory
@@ -14,7 +15,15 @@ try:
 except ImportError:
     from api import metrics, websocket
 
-app = FastAPI(title="Yamon API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """应用生命周期管理：启动和停止后台任务"""
+    # 启动时：启动后台数据收集任务
+    await websocket.start_background_collector()
+    yield
+    # 关闭时：清理资源（如果需要）
+
+app = FastAPI(title="Yamon API", version="1.0.0", lifespan=lifespan)
 
 # CORS 配置（开发环境需要）
 app.add_middleware(

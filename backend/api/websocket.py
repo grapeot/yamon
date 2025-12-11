@@ -2,28 +2,66 @@
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 try:
-    from backend.collectors.collector import MetricsCollector
+    from backend.collectors.collector import MetricsCollector, SystemMetrics
     from backend.history import MetricsHistory
 except ImportError:
-    from collectors.collector import MetricsCollector
+    from collectors.collector import MetricsCollector, SystemMetrics
     from history import MetricsHistory
 import asyncio
 import json
+from typing import Optional
 
 router = APIRouter()
 collector = MetricsCollector()
 history = MetricsHistory(max_size=120)
+
+# 共享的最新指标数据（线程安全）
+_latest_metrics: Optional[SystemMetrics] = None
+_metrics_lock = asyncio.Lock()
+
+# 后台收集任务
+_collection_task: Optional[asyncio.Task] = None
+
+async def _background_collector():
+    """后台任务：持续收集指标数据"""
+    global _latest_metrics
+    while True:
+        try:
+            # 在线程池中运行同步的collect()方法，避免阻塞事件循环
+            metrics = await asyncio.to_thread(collector.collect)
+            async with _metrics_lock:
+                _latest_metrics = metrics
+            history.add_metrics(metrics)
+            # 收集间隔：0.5秒（2fps）
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            print(f"Background collector error: {e}")
+            await asyncio.sleep(0.5)
+
+async def start_background_collector():
+    """启动后台收集任务"""
+    global _collection_task
+    if _collection_task is None or _collection_task.done():
+        _collection_task = asyncio.create_task(_background_collector())
 
 @router.websocket("/metrics")
 async def websocket_metrics(websocket: WebSocket):
     """WebSocket 实时推送系统指标"""
     await websocket.accept()
     
+    # 确保后台收集任务已启动
+    await start_background_collector()
+    
     try:
         while True:
-            # 收集指标
-            metrics = collector.collect()
-            history.add_metrics(metrics)
+            # 读取最新数据（不等待收集完成）
+            async with _metrics_lock:
+                metrics = _latest_metrics
+            
+            if metrics is None:
+                # 如果还没有数据，等待一下
+                await asyncio.sleep(0.1)
+                continue
             
             # 发送数据
             await websocket.send_json({
