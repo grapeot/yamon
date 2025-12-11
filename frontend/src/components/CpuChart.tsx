@@ -6,12 +6,13 @@ interface CpuChartProps {
   cpuPerCore: number[]
   cpuPPercent: number
   cpuEPercent: number
+  cpuPercentHistory: number[]
   cpuPHistory: number[]
   cpuEHistory: number[]
   cpuCount: number
 }
 
-export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPHistory, cpuEHistory, cpuCount }: CpuChartProps) {
+export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPercentHistory, cpuPHistory, cpuEHistory, cpuCount }: CpuChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
 
@@ -34,9 +35,23 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpu
   useEffect(() => {
     if (!chartInstance.current) return
 
-    // 使用实际记录的 P 核和 E 核历史数据
+    // 使用实际记录的 P 核和 E 核历史数据（这些是占整体算力的比例，0-100%）
     const updatedPHistory = [...cpuPHistory, cpuPPercent].slice(-120)
     const updatedEHistory = [...cpuEHistory, cpuEPercent].slice(-120)
+    // 总CPU使用率历史数据
+    const updatedTotalHistory = [...cpuPercentHistory, cpuPercent].slice(-120)
+    
+    // 计算P核和E核对总CPU使用率的实际贡献
+    // P核实际贡献 = 总使用率 * (P占整体算力的比例 / 100)
+    // E核实际贡献 = 总使用率 * (E占整体算力的比例 / 100)
+    const pActualHistory = updatedTotalHistory.map((total, i) => {
+      const pRatio = updatedPHistory[i] / 100.0
+      return total * pRatio
+    })
+    const eActualHistory = updatedTotalHistory.map((total, i) => {
+      const eRatio = updatedEHistory[i] / 100.0
+      return total * eRatio
+    })
 
     // 检测 P 核和 E 核数量（用于显示）
     let pCoreCount = 0
@@ -67,7 +82,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpu
 
     chartInstance.current.setOption({
       title: {
-        text: `CPU Usage: ${cpuPercent.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`,
+        text: `CPU Usage: ${cpuPercent.toFixed(1)}% (P占${cpuPPercent.toFixed(1)}%, E占${cpuEPercent.toFixed(1)}%)`,
         left: 'center',
         top: 10,
         textStyle: { fontSize: 18, color: '#fff' },
@@ -98,7 +113,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpu
       xAxis: {
         type: 'category',
         boundaryGap: false,
-        data: updatedPHistory.map((_, i: number) => i),
+          data: pActualHistory.map((_, i: number) => i),
         axisLabel: { show: false },
       },
       yAxis: {
@@ -133,7 +148,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpu
           },
           lineStyle: { color: '#ee6666', width: 2 },
           itemStyle: { color: '#ee6666' },
-          data: updatedPHistory,
+          data: pActualHistory,
         },
         {
           name: `E-Cores (${eCoreCount})`,
@@ -157,11 +172,11 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpu
           },
           lineStyle: { color: '#73c0de', width: 2 },
           itemStyle: { color: '#73c0de' },
-          data: updatedEHistory,
+          data: eActualHistory,
         },
       ],
     })
-  }, [cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPHistory, cpuEHistory, cpuCount])
+  }, [cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPercentHistory, cpuPHistory, cpuEHistory, cpuCount])
 
   return (
     <div className="chart-container">
