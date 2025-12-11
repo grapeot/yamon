@@ -280,7 +280,12 @@ class AppleAPICollector:
                 return AppleMetrics()  # Return empty instead of None
             
             # Parse text output (more reliable than plist)
+            import sys
+            print(f"[DEBUG] About to call _parse_powermetrics_text, stdout length: {len(result.stdout) if result.stdout else 0}", file=sys.stderr)
+            sys.stderr.flush()
             parsed = self._parse_powermetrics_text(result.stdout)
+            print(f"[DEBUG] _parse_powermetrics_text returned: pcpu_freq_mhz={parsed.pcpu_freq_mhz}, ecpu_freq_mhz={parsed.ecpu_freq_mhz}", file=sys.stderr)
+            sys.stderr.flush()
             
             # Try to get GPU usage via ioreg only if powermetrics didn't find it
             if parsed.gpu_usage is None:
