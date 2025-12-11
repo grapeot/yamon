@@ -82,14 +82,16 @@ class AppleAPICollector:
         """Collect metrics using powermetrics command"""
         try:
             # Run powermetrics with a short sample interval
-            # Format: powermetrics -i 1000 -n 1 --samplers cpu_power,gpu_power,ane_power
+            # Format: powermetrics -i 1000 -n 1 --samplers cpu_power,gpu_power,ane_power --show-process-gpu
             # Note: powermetrics doesn't directly provide GPU usage percentage
+            # --show-process-gpu may provide per-process GPU time, but not overall usage
             # We'll try to get it via ioreg separately
             cmd = [
                 'powermetrics',
                 '-i', '1000',  # 1 second interval
                 '-n', '1',     # 1 sample
-                '--samplers', 'cpu_power,gpu_power,ane_power'
+                '--samplers', 'cpu_power,gpu_power,ane_power',
+                '--show-process-gpu'  # Show per-process GPU time (may help calculate usage)
                 # Use default text format - plist parsing is complex
             ]
             
