@@ -19,6 +19,7 @@ class SystemMetrics:
     # Memory
     memory_total: int  # bytes
     memory_used: int   # bytes
+    memory_available: int  # bytes
     memory_percent: float
     swap_total: int    # bytes
     swap_used: int     # bytes
