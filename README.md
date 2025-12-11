@@ -233,8 +233,10 @@ The application will be available at http://localhost:8001
 - **Collection Methods**:
   - `psutil`: Cross-platform CPU, Memory, Network
   - `powermetrics`: Apple Silicon power and GPU metrics (requires sudo)
-  - SMC API: System total power via IOKit (requires sudo)
+  - SMC API: System total power via IOKit (currently requires sudo, but can work without it)
   - `ioreg`: Fallback for GPU usage
+
+**Note**: Currently we use `powermetrics` which requires sudo. Tools like `mactop` avoid sudo by using IOReport API directly (a user-level API). We plan to migrate to IOReport API in the future to eliminate the sudo requirement.
 
 ### API Endpoints
 
