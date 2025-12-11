@@ -1,4 +1,4 @@
-/** System metrics type definitions */
+// System metrics type definitions
 
 export interface SystemMetrics {
   cpu_percent: number
