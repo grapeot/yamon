@@ -580,31 +580,89 @@ class AppleAPICollector:
                     pass
         
         # Try to extract CPU frequencies if available
-        # Format: "CPU 0 frequency: 4512 MHz" or "CPU 0 frequency: 4512 MHz"
-        # P-cores typically have higher frequencies, E-cores lower
-        cpu_freq_matches = re.findall(r'CPU\s+\d+\s+frequency[:\s]+([\d.]+)\s*MHz', text, re.IGNORECASE)
-        if cpu_freq_matches:
+        # Format: "CPU 0 frequency: 4512 MHz"
+        # We need to match both CPU number and frequency to identify P-core vs E-core
+        # Method 1: Use cluster information (E-Cluster vs P-Cluster)
+        # Method 2: Use CPU number ranges (E-cores typically come first, then P-cores)
+        
+        # Extract CPU frequencies with their CPU numbers
+        cpu_freq_pattern = re.compile(r'CPU\s+(\d+)\s+frequency[:\s]+([\d.]+)\s*MHz', re.IGNORECASE)
+        cpu_freq_data = cpu_freq_pattern.findall(text)
+        
+        if cpu_freq_data:
             try:
-                frequencies = [float(f) for f in cpu_freq_matches]
-                if frequencies:
-                    # Find P-core frequency (typically higher, usually > 2000 MHz)
-                    # Find E-core frequency (typically lower, usually < 2000 MHz)
-                    high_freqs = [f for f in frequencies if f > 2000]
-                    low_freqs = [f for f in frequencies if f <= 2000]
+                # Parse CPU numbers and frequencies
+                cpu_freqs = [(int(cpu_num), float(freq)) for cpu_num, freq in cpu_freq_data]
+                cpu_freqs.sort(key=lambda x: x[0])  # Sort by CPU number
+                
+                if cpu_freqs:
+                    # Determine P-core and E-core ranges based on CPU count
+                    total_cpus = len(cpu_freqs)
+                    cpu_numbers = [cpu_num for cpu_num, _ in cpu_freqs]
                     
-                    if high_freqs:
-                        metrics.pcpu_freq_mhz = max(high_freqs)  # Use max P-core freq
-                    if low_freqs:
-                        metrics.ecpu_freq_mhz = max(low_freqs)  # Use max E-core freq
+                    # Try to identify clusters from text
+                    # Look for "E-Cluster" or "P-Cluster" patterns
+                    e_cluster_match = re.search(r'E-Cluster.*?CPU\s+(\d+)', text, re.IGNORECASE | re.DOTALL)
+                    p_cluster_match = re.search(r'P\d*-Cluster.*?CPU\s+(\d+)', text, re.IGNORECASE | re.DOTALL)
                     
-                    # Fallback: if we can't distinguish, use average
-                    if not metrics.pcpu_freq_mhz and not metrics.ecpu_freq_mhz:
-                        avg_freq = sum(frequencies) / len(frequencies)
-                        if avg_freq > 2000:
-                            metrics.pcpu_freq_mhz = avg_freq
+                    e_core_indices = []
+                    p_core_indices = []
+                    
+                    if e_cluster_match and p_cluster_match:
+                        # Find the range of CPUs in each cluster
+                        e_start_cpu = int(e_cluster_match.group(1))
+                        p_start_cpu = int(p_cluster_match.group(1))
+                        
+                        # Find all CPUs in E-cluster (before P-cluster starts)
+                        for cpu_num, freq in cpu_freqs:
+                            if cpu_num < p_start_cpu:
+                                e_core_indices.append((cpu_num, freq))
+                            else:
+                                p_core_indices.append((cpu_num, freq))
+                    else:
+                        # Fallback: Use CPU count to estimate P/E core split
+                        # Common configurations:
+                        # 8 CPUs: 4P + 4E (first 4 are E, last 4 are P)
+                        # 10 CPUs: 8P + 2E (first 2 are E, last 8 are P)
+                        # 12 CPUs: 8P + 4E (first 4 are E, last 8 are P)
+                        # 16 CPUs: 12P + 4E (first 4 are E, last 12 are P)
+                        
+                        if total_cpus == 8:
+                            e_core_indices = cpu_freqs[:4]
+                            p_core_indices = cpu_freqs[4:]
+                        elif total_cpus == 10:
+                            e_core_indices = cpu_freqs[:2]
+                            p_core_indices = cpu_freqs[2:]
+                        elif total_cpus == 12:
+                            e_core_indices = cpu_freqs[:4]
+                            p_core_indices = cpu_freqs[4:]
+                        elif total_cpus == 16:
+                            e_core_indices = cpu_freqs[:4]
+                            p_core_indices = cpu_freqs[4:]
                         else:
-                            metrics.ecpu_freq_mhz = avg_freq
-            except (ValueError, IndexError):
+                            # Default: assume first half are E-cores, second half are P-cores
+                            mid = total_cpus // 2
+                            e_core_indices = cpu_freqs[:mid]
+                            p_core_indices = cpu_freqs[mid:]
+                    
+                    # Extract frequencies
+                    if e_core_indices:
+                        e_freqs = [freq for _, freq in e_core_indices]
+                        metrics.ecpu_freq_mhz = max(e_freqs)  # Use max E-core freq
+                        if self._debug:
+                            import sys
+                            print(f"[DEBUG] E-core frequencies: {e_freqs}, using max: {metrics.ecpu_freq_mhz} MHz", file=sys.stderr)
+                    
+                    if p_core_indices:
+                        p_freqs = [freq for _, freq in p_core_indices]
+                        metrics.pcpu_freq_mhz = max(p_freqs)  # Use max P-core freq
+                        if self._debug:
+                            import sys
+                            print(f"[DEBUG] P-core frequencies: {p_freqs}, using max: {metrics.pcpu_freq_mhz} MHz", file=sys.stderr)
+            except (ValueError, IndexError) as e:
+                if self._debug:
+                    import sys
+                    print(f"[DEBUG] Error parsing CPU frequencies: {e}", file=sys.stderr)
                 pass
         
         # Try to extract GPU frequency if available
