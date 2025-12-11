@@ -43,14 +43,13 @@ class YamonApp(App):
         height: auto;
     }
     
-    #left-column, #right-column {
+    #row1-col1, #row1-col2, #row2-col1, #row2-col2, #row3-col1, #row3-col2 {
         width: 1fr;
         padding: 1;
     }
     
-    #cpu-label, #memory-label, #network-up-label, #network-down-label,
-    #gpu-label, #ane-label, #cpu-power-label, #gpu-power-label,
-    #ane-power-label, #system-power-label {
+    #cpu-label, #memory-label, #network-label,
+    #gpu-label, #ane-label, #system-power-label {
         text-style: bold;
         padding: 0 1;
         height: auto;
@@ -85,6 +84,7 @@ class YamonApp(App):
         height: auto;
         width: 1fr;
         min-height: 6;
+        max-height: 8;
         margin-top: 0;
         margin-bottom: 1;
     }
@@ -107,28 +107,35 @@ class YamonApp(App):
         yield Header(show_clock=True)
         
         with Container(id="main-container"):
+            # Row 1: CPU Usage (left) and Power (right)
             with Horizontal():
-                with Vertical(id="left-column"):
+                with Vertical(id="row1-col1"):
                     yield Static("CPU Usage: 0.0%", id="cpu-label")
                     yield Static("", classes="chart-box", id="cpu-chart")
-                    
-                    yield Static("Memory Usage: 0.0%", id="memory-label")
-                    yield Static("", classes="chart-box", id="memory-chart")
-                    
-                    yield Static("Network ↑ Upload: 0.0 B/s", id="network-up-label")
-                    
-                    yield Static("Network ↓ Download: 0.0 B/s", id="network-down-label")
-                    yield Static("", classes="chart-box", id="network-chart")
-                    
-                    yield Static("GPU Usage: N/A", id="gpu-label")
-                    yield Static("", classes="chart-box", id="gpu-chart")
-                    
-                    yield Static("ANE Usage: N/A", id="ane-label")
-                    yield Static("", classes="chart-box", id="ane-chart")
                 
-                with Vertical(id="right-column"):
+                with Vertical(id="row1-col2"):
                     yield Static("Power: N/A", id="system-power-label")
                     yield Static("", classes="chart-box", id="power-chart")
+            
+            # Row 2: Memory Usage (left) and GPU Usage (right)
+            with Horizontal():
+                with Vertical(id="row2-col1"):
+                    yield Static("Memory Usage: 0.0%", id="memory-label")
+                    yield Static("", classes="chart-box", id="memory-chart")
+                
+                with Vertical(id="row2-col2"):
+                    yield Static("GPU Usage: N/A", id="gpu-label")
+                    yield Static("", classes="chart-box", id="gpu-chart")
+            
+            # Row 3: Network (left) and ANE Usage (right)
+            with Horizontal():
+                with Vertical(id="row3-col1"):
+                    yield Static("Network: ↑ 0.0 B/s, ↓ 0.0 B/s", id="network-label")
+                    yield Static("", classes="chart-box", id="network-chart")
+                
+                with Vertical(id="row3-col2"):
+                    yield Static("ANE Usage: N/A", id="ane-label")
+                    yield Static("", classes="chart-box", id="ane-chart")
             
             with Container(id="cpu-cores-container"):
                 yield Static("CPU Cores:", classes="cpu-cores", id="cpu-cores-label")
@@ -161,15 +168,11 @@ class YamonApp(App):
         memory_label = self.query_one("#memory-label", Static)
         memory_label.update(f"Memory Usage: {metrics.memory_percent:.1f}%")
         
-        # Network Upload - update label with value
-        network_up_label = self.query_one("#network-up-label", Static)
+        # Network - update label with both upload and download
+        network_label = self.query_one("#network-label", Static)
         sent_rate_str = self.collector.format_bytes(int(metrics.network_sent_rate))
-        network_up_label.update(f"Network ↑ Upload: {sent_rate_str}/s")
-        
-        # Network Download - update label with value
-        network_down_label = self.query_one("#network-down-label", Static)
         recv_rate_str = self.collector.format_bytes(int(metrics.network_recv_rate))
-        network_down_label.update(f"Network ↓ Download: {recv_rate_str}/s")
+        network_label.update(f"Network: ↑ {sent_rate_str}/s, ↓ {recv_rate_str}/s")
         
         # CPU Cores
         cpu_cores_widget = self.query_one("#cpu-cores-value", Static)
