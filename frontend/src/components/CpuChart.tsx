@@ -69,12 +69,9 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcp
     }
 
     // Build title with frequencies if available
-    // cpuPercent should equal cpuPPercent + cpuEPercent (both are frequency-scaled)
-    // Ensure consistency: use cpuPPercent + cpuEPercent if they don't match cpuPercent
-    const calculatedTotal = cpuPPercent + cpuEPercent
-    const displayTotal = Math.abs(cpuPercent - calculatedTotal) < 0.1 ? cpuPercent : calculatedTotal
-    
-    let titleText = `CPU Usage: ${displayTotal.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`
+    // cpuPercent, cpuPPercent, and cpuEPercent are all frequency-scaled
+    // cpuPercent should equal cpuPPercent + cpuEPercent (backend ensures this)
+    let titleText = `CPU Usage: ${cpuPercent.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`
     if (pcpuFreqMhz !== null || ecpuFreqMhz !== null) {
       const freqParts: string[] = []
       if (pcpuFreqMhz !== null) {
