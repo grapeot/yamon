@@ -30,6 +30,8 @@ interface SystemMetrics {
 
 interface HistoryData {
   cpu_percent: number[]
+  cpu_p_percent: number[]
+  cpu_e_percent: number[]
   memory_percent: number[]
   network_sent_rate: number[]
   network_recv_rate: number[]
@@ -47,6 +49,8 @@ function App() {
   const typedMetrics = metrics as SystemMetrics | null
   const [history, setHistory] = useState<HistoryData>({
     cpu_percent: [],
+    cpu_p_percent: [],
+    cpu_e_percent: [],
     memory_percent: [],
     network_sent_rate: [],
     network_recv_rate: [],
@@ -64,6 +68,8 @@ function App() {
 
     setHistory((prev) => ({
       cpu_percent: [...prev.cpu_percent, typedMetrics.cpu_percent].slice(-120),
+      cpu_p_percent: [...prev.cpu_p_percent, typedMetrics.cpu_p_percent].slice(-120),
+      cpu_e_percent: [...prev.cpu_e_percent, typedMetrics.cpu_e_percent].slice(-120),
       memory_percent: [...prev.memory_percent, typedMetrics.memory_percent].slice(-120),
       network_sent_rate: [...prev.network_sent_rate, typedMetrics.network_sent_rate].slice(-120),
       network_recv_rate: [...prev.network_recv_rate, typedMetrics.network_recv_rate].slice(-120),
@@ -105,7 +111,10 @@ function App() {
               <CpuChart
                 cpuPercent={typedMetrics.cpu_percent}
                 cpuPerCore={typedMetrics.cpu_per_core}
-                history={history.cpu_percent}
+                cpuPPercent={typedMetrics.cpu_p_percent}
+                cpuEPercent={typedMetrics.cpu_e_percent}
+                cpuPHistory={history.cpu_p_percent}
+                cpuEHistory={history.cpu_e_percent}
                 cpuCount={typedMetrics.cpu_count}
               />
             </div>

@@ -5,6 +5,8 @@ export interface SystemMetrics {
   cpu_percent: number
   cpu_per_core: number[]
   cpu_count: number
+  cpu_p_percent: number
+  cpu_e_percent: number
   memory_percent: number
   memory_total: number
   memory_used: number

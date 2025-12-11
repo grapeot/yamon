@@ -4,11 +4,14 @@ import * as echarts from 'echarts'
 interface CpuChartProps {
   cpuPercent: number
   cpuPerCore: number[]
-  history: number[]
+  cpuPPercent: number
+  cpuEPercent: number
+  cpuPHistory: number[]
+  cpuEHistory: number[]
   cpuCount: number
 }
 
-export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChartProps) {
+export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPHistory, cpuEHistory, cpuCount }: CpuChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
 
@@ -31,12 +34,11 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, cpuPercent].slice(-120)
+    // 使用实际记录的 P 核和 E 核历史数据
+    const updatedPHistory = [...cpuPHistory, cpuPPercent].slice(-120)
+    const updatedEHistory = [...cpuEHistory, cpuEPercent].slice(-120)
 
-    // 检测 P 核和 E 核
-    // Apple Silicon 通常：M1/M2/M3: 4P+4E, M1 Pro/Max: 8P+2E, M2 Pro/Max: 8P+4E, M3 Pro: 6P+6E, M3 Max: 12P+4E
-    // 简单策略：假设前一半是 P 核，后一半是 E 核（对于大多数情况）
-    // 或者根据核心数量推断
+    // 检测 P 核和 E 核数量（用于显示）
     let pCoreCount = 0
     let eCoreCount = 0
 
@@ -63,21 +65,9 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
       eCoreCount = cpuCount - pCoreCount
     }
 
-    // 计算 P 核和 E 核的平均使用率
-    const pCores = cpuPerCore.slice(0, pCoreCount)
-    const eCores = cpuPerCore.slice(pCoreCount)
-
-    const pCoreAvg = pCores.length > 0 ? pCores.reduce((sum, val) => sum + val, 0) / pCores.length : 0
-    const eCoreAvg = eCores.length > 0 ? eCores.reduce((sum, val) => sum + val, 0) / eCores.length : 0
-
-    // 计算总使用率用于分配历史数据
-    const totalCoreUsage = pCoreAvg * pCoreCount + eCoreAvg * eCoreCount
-    const pRatio = totalCoreUsage > 0 ? (pCoreAvg * pCoreCount) / totalCoreUsage : 0
-    const eRatio = totalCoreUsage > 0 ? (eCoreAvg * eCoreCount) / totalCoreUsage : 0
-
     chartInstance.current.setOption({
       title: {
-        text: `CPU Usage: ${cpuPercent.toFixed(1)}% (P: ${pCoreAvg.toFixed(1)}%, E: ${eCoreAvg.toFixed(1)}%)`,
+        text: `CPU Usage: ${cpuPercent.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`,
         left: 'center',
         top: 10,
         textStyle: { fontSize: 18, color: '#fff' },
@@ -108,7 +98,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
       xAxis: {
         type: 'category',
         boundaryGap: false,
-        data: updatedHistory.map((_, i) => i),
+        data: updatedPHistory.map((_, i: number) => i),
         axisLabel: { show: false },
       },
       yAxis: {
@@ -143,7 +133,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
           },
           lineStyle: { color: '#ee6666', width: 2 },
           itemStyle: { color: '#ee6666' },
-          data: updatedHistory.map((total) => pRatio * total),
+          data: updatedPHistory,
         },
         {
           name: `E-Cores (${eCoreCount})`,
@@ -167,11 +157,11 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
           },
           lineStyle: { color: '#73c0de', width: 2 },
           itemStyle: { color: '#73c0de' },
-          data: updatedHistory.map((total) => eRatio * total),
+          data: updatedEHistory,
         },
       ],
     })
-  }, [cpuPercent, cpuPerCore, history, cpuCount])
+  }, [cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPHistory, cpuEHistory, cpuCount])
 
   return (
     <div className="chart-container">
