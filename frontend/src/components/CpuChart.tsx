@@ -6,12 +6,14 @@ interface CpuChartProps {
   cpuPerCore: number[]
   cpuPPercent: number
   cpuEPercent: number
+  pcpuFreqMhz: number | null
+  ecpuFreqMhz: number | null
   cpuPHistory: number[]
   cpuEHistory: number[]
   cpuCount: number
 }
 
-export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPHistory, cpuEHistory, cpuCount }: CpuChartProps) {
+export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcpuFreqMhz, ecpuFreqMhz, cpuPHistory, cpuEHistory, cpuCount }: CpuChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
 
@@ -66,9 +68,24 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpu
       eCoreCount = cpuCount - pCoreCount
     }
 
+    // Build title with frequencies if available
+    let titleText = `CPU Usage: ${cpuPercent.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`
+    if (pcpuFreqMhz !== null || ecpuFreqMhz !== null) {
+      const freqParts: string[] = []
+      if (pcpuFreqMhz !== null) {
+        freqParts.push(`P: ${pcpuFreqMhz.toFixed(0)} MHz`)
+      }
+      if (ecpuFreqMhz !== null) {
+        freqParts.push(`E: ${ecpuFreqMhz.toFixed(0)} MHz`)
+      }
+      if (freqParts.length > 0) {
+        titleText += ` [${freqParts.join(', ')}]`
+      }
+    }
+
     chartInstance.current.setOption({
       title: {
-        text: `CPU Usage: ${cpuPercent.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`,
+        text: titleText,
         left: 'center',
         top: 10,
         textStyle: { fontSize: 18, color: '#fff' },
@@ -162,7 +179,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpu
         },
       ],
     })
-  }, [cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, cpuPHistory, cpuEHistory, cpuCount])
+  }, [cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcpuFreqMhz, ecpuFreqMhz, cpuPHistory, cpuEHistory, cpuCount])
 
   return (
     <div className="chart-container">

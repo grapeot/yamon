@@ -15,6 +15,8 @@ interface SystemMetrics {
   cpu_count: number
   cpu_p_percent: number
   cpu_e_percent: number
+  pcpu_freq_mhz: number | null
+  ecpu_freq_mhz: number | null
   memory_percent: number
   memory_total: number
   memory_used: number
@@ -104,6 +106,8 @@ function App() {
                 cpuPerCore={typedMetrics.cpu_per_core}
                 cpuPPercent={typedMetrics.cpu_p_percent}
                 cpuEPercent={typedMetrics.cpu_e_percent}
+                pcpuFreqMhz={typedMetrics.pcpu_freq_mhz}
+                ecpuFreqMhz={typedMetrics.ecpu_freq_mhz}
                 cpuPHistory={history.cpu_p_percent}
                 cpuEHistory={history.cpu_e_percent}
                 cpuCount={typedMetrics.cpu_count}

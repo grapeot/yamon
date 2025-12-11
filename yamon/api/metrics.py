@@ -18,10 +18,46 @@ async def get_metrics():
     """获取当前系统指标"""
     metrics = collector.collect()
     history.add_metrics(metrics)
+    
+    # Calculate P-core and E-core percentages
+    cpu_per_core = metrics.cpu_per_core
+    cpu_count = metrics.cpu_count
+    
+    # Determine P-core and E-core counts
+    if cpu_count == 8:
+        p_core_count = 4
+        e_core_count = 4
+    elif cpu_count == 10:
+        p_core_count = 8
+        e_core_count = 2
+    elif cpu_count == 12:
+        p_core_count = 8
+        e_core_count = 4
+    elif cpu_count == 16:
+        p_core_count = 12
+        e_core_count = 4
+    else:
+        p_core_count = cpu_count // 2
+        e_core_count = cpu_count - p_core_count
+    
+    p_cores = cpu_per_core[:p_core_count] if len(cpu_per_core) >= p_core_count else []
+    e_cores = cpu_per_core[p_core_count:] if len(cpu_per_core) > p_core_count else []
+    
+    if cpu_count > 0:
+        cpu_p_percent = (sum(p_cores) / cpu_count) if p_cores else 0.0
+        cpu_e_percent = (sum(e_cores) / cpu_count) if e_cores else 0.0
+    else:
+        cpu_p_percent = 0.0
+        cpu_e_percent = 0.0
+    
     return {
         "cpu_percent": metrics.cpu_percent,
         "cpu_per_core": metrics.cpu_per_core,
         "cpu_count": metrics.cpu_count,
+        "cpu_p_percent": cpu_p_percent,
+        "cpu_e_percent": cpu_e_percent,
+        "pcpu_freq_mhz": metrics.pcpu_freq_mhz,
+        "ecpu_freq_mhz": metrics.ecpu_freq_mhz,
         "memory_percent": metrics.memory_percent,
         "memory_total": metrics.memory_total,
         "memory_used": metrics.memory_used,

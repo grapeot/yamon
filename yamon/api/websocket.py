@@ -113,6 +113,8 @@ async def websocket_metrics(websocket: WebSocket):
                 "cpu_count": metrics.cpu_count,
                 "cpu_p_percent": cpu_p_percent,
                 "cpu_e_percent": cpu_e_percent,
+                "pcpu_freq_mhz": metrics.pcpu_freq_mhz,
+                "ecpu_freq_mhz": metrics.ecpu_freq_mhz,
                 "memory_percent": metrics.memory_percent,
                 "memory_total": metrics.memory_total,
                 "memory_used": metrics.memory_used,

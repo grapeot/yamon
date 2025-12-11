@@ -7,6 +7,8 @@ export interface SystemMetrics {
   cpu_count: number
   cpu_p_percent: number
   cpu_e_percent: number
+  pcpu_freq_mhz: number | null
+  ecpu_freq_mhz: number | null
   memory_percent: number
   memory_total: number
   memory_used: number

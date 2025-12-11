@@ -23,6 +23,10 @@ class AppleMetrics:
     dram_power: float = 0.0
     system_power: Optional[float] = None  # None if not available (requires SMC/IOReport for accurate total)
     
+    # CPU frequencies
+    pcpu_freq_mhz: Optional[float] = None  # P-core frequency in MHz
+    ecpu_freq_mhz: Optional[float] = None  # E-core frequency in MHz
+    
     # GPU
     gpu_usage: Optional[float] = None  # percentage, None if not available
     gpu_freq_mhz: Optional[float] = None  # MHz, None if not available
@@ -563,6 +567,34 @@ class AppleAPICollector:
                     metrics.system_power = None  # Set to None instead of approximate value
                 except (ValueError, IndexError):
                     pass
+        
+        # Try to extract CPU frequencies if available
+        # Format: "CPU 0 frequency: 4512 MHz" or "CPU 0 frequency: 4512 MHz"
+        # P-cores typically have higher frequencies, E-cores lower
+        cpu_freq_matches = re.findall(r'CPU\s+\d+\s+frequency[:\s]+([\d.]+)\s*MHz', text, re.IGNORECASE)
+        if cpu_freq_matches:
+            try:
+                frequencies = [float(f) for f in cpu_freq_matches]
+                if frequencies:
+                    # Find P-core frequency (typically higher, usually > 2000 MHz)
+                    # Find E-core frequency (typically lower, usually < 2000 MHz)
+                    high_freqs = [f for f in frequencies if f > 2000]
+                    low_freqs = [f for f in frequencies if f <= 2000]
+                    
+                    if high_freqs:
+                        metrics.pcpu_freq_mhz = max(high_freqs)  # Use max P-core freq
+                    if low_freqs:
+                        metrics.ecpu_freq_mhz = max(low_freqs)  # Use max E-core freq
+                    
+                    # Fallback: if we can't distinguish, use average
+                    if not metrics.pcpu_freq_mhz and not metrics.ecpu_freq_mhz:
+                        avg_freq = sum(frequencies) / len(frequencies)
+                        if avg_freq > 2000:
+                            metrics.pcpu_freq_mhz = avg_freq
+                        else:
+                            metrics.ecpu_freq_mhz = avg_freq
+            except (ValueError, IndexError):
+                pass
         
         # Try to extract GPU frequency if available
         gpu_freq_match = re.search(r'GPU.*?frequency[:\s]+([\d.]+)\s*MHz', text, re.IGNORECASE)
