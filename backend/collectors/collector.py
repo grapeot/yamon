@@ -111,6 +111,7 @@ class MetricsCollector:
             cpu_count=cpu_count,
             memory_total=mem.total,
             memory_used=mem.used,
+            memory_available=mem.available,
             memory_percent=mem.percent,
             swap_total=swap.total,
             swap_used=swap.used,
