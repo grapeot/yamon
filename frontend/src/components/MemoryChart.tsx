@@ -75,6 +75,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
           name: 'Memory',
           type: 'line',
           smooth: true,
+          showSymbol: false,
           areaStyle: {
             color: {
               type: 'linear',

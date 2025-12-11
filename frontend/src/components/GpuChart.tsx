@@ -67,6 +67,7 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
           name: 'GPU Usage',
           type: 'line',
           smooth: true,
+          showSymbol: false,
           areaStyle: {
             color: {
               type: 'linear',

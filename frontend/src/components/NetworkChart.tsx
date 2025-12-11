@@ -111,6 +111,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
           name: 'Upload',
           type: 'line',
           smooth: true,
+          showSymbol: false,
           areaStyle: {
             color: {
               type: 'linear',
@@ -132,6 +133,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
           name: 'Download',
           type: 'line',
           smooth: true,
+          showSymbol: false,
           areaStyle: {
             color: {
               type: 'linear',

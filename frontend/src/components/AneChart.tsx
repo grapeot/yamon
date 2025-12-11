@@ -67,6 +67,7 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
           name: 'ANE Usage',
           type: 'line',
           smooth: true,
+          showSymbol: false,
           areaStyle: {
             color: {
               type: 'linear',

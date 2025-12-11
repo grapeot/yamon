@@ -51,6 +51,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
         type: 'line',
         stack: 'CPU',
         areaStyle: { opacity: 0.4 },
+        showSymbol: false,
         // 根据当前比例分配历史数据
         data: updatedHistory.map((total) => ratio * total),
         lineStyle: { color: colors[coreIdx % colors.length], width: 1 },
