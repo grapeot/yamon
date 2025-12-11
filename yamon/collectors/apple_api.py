@@ -685,19 +685,29 @@ class AppleAPICollector:
                     
                     # Extract frequencies
                     import sys
+                    print(f"[DEBUG] About to extract frequencies: e_core_indices={len(e_core_indices)}, p_core_indices={len(p_core_indices)}", file=sys.stderr)
+                    sys.stderr.flush()
+                    
                     if e_core_indices:
                         e_freqs = [freq for _, freq in e_core_indices]
                         metrics.ecpu_freq_mhz = max(e_freqs)  # Use max E-core freq
                         print(f"[DEBUG] E-core frequencies: {e_freqs}, using max: {metrics.ecpu_freq_mhz} MHz", file=sys.stderr)
+                        sys.stderr.flush()
                     else:
                         print("[DEBUG] No E-core indices found", file=sys.stderr)
+                        sys.stderr.flush()
                     
                     if p_core_indices:
                         p_freqs = [freq for _, freq in p_core_indices]
                         metrics.pcpu_freq_mhz = max(p_freqs)  # Use max P-core freq
                         print(f"[DEBUG] P-core frequencies: {p_freqs}, using max: {metrics.pcpu_freq_mhz} MHz", file=sys.stderr)
+                        sys.stderr.flush()
                     else:
                         print("[DEBUG] No P-core indices found", file=sys.stderr)
+                        sys.stderr.flush()
+                    
+                    print(f"[DEBUG] Final metrics: pcpu_freq_mhz={metrics.pcpu_freq_mhz}, ecpu_freq_mhz={metrics.ecpu_freq_mhz}", file=sys.stderr)
+                    sys.stderr.flush()
             except (ValueError, IndexError) as e:
                 import sys
                 print(f"[DEBUG] Error parsing CPU frequencies: {e}", file=sys.stderr)
