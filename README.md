@@ -25,6 +25,32 @@ Unlock metrics that Activity Monitor hides:
 - **No Dependencies**: Doesn't require compiling Rust or C/C++ binaries.
 - **No Sudo Required**: Most metrics (including Power and GPU) work without root privileges.*
 
+## 📦 Installation
+
+### Install from PyPI (Recommended)
+
+```bash
+pip install yamon
+```
+
+After installation, run:
+```bash
+yamon
+```
+
+Visit **http://localhost:8000** to see your system in action.
+
+### Install from Source
+
+```bash
+# Clone the repository
+git clone https://github.com/grapeot/yamon.git
+cd yamon
+
+# Install in development mode
+pip install -e .
+```
+
 ## 📸 Usage
 
 ### Development Mode (Separate Frontend & Backend)

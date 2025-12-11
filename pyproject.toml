@@ -1,0 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yamon"
+version = "0.1.0"
+description = "Visually pleasing, deep system monitoring for macOS"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "grapeot"}
+]
+keywords = ["macos", "monitoring", "apple-silicon", "system-monitor", "performance"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Hardware",
+]
+
+dependencies = [
+    "psutil>=5.9.0,<6.0.0",
+    "fastapi>=0.104.0,<1.0.0",
+    "uvicorn[standard]>=0.24.0,<1.0.0",
+    "websockets>=12.0,<13.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "black>=23.0.0",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+yamon = "yamon.cli:main"
+
+[tool.setuptools]
+packages = ["yamon", "yamon.api", "yamon.collectors"]
+
+[tool.setuptools.package-data]
+yamon = [
+    "static/**/*",
+]
+
+[tool.setuptools.package-dir]
+"" = "."
+

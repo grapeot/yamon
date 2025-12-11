@@ -50,3 +50,9 @@ frontend/.vite/
 # Backend static files (generated)
 backend/static/
 
+
+# Python build artifacts
+dist/
+build/
+*.egg-info/
+*.whl
