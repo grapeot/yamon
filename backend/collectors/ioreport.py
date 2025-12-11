@@ -304,7 +304,11 @@ class IOReport:
             raise IOReportError("Subscription not created")
         
         samples = max(1, samples)
-        step_ms = max(1, total_ms // samples)
+        # For single sample, use minimal wait time for faster collection
+        if samples == 1:
+            step_ms = 10  # 10ms minimum wait for delta calculation
+        else:
+            step_ms = max(1, total_ms // samples)
         
         # Initial sample
         prev_sample = self._ioreport.IOReportCreateSamples(
