@@ -106,8 +106,8 @@ function App() {
                 cpuPerCore={typedMetrics.cpu_per_core}
                 cpuPPercent={typedMetrics.cpu_p_percent}
                 cpuEPercent={typedMetrics.cpu_e_percent}
-                pcpuFreqMhz={typedMetrics.pcpu_freq_mhz}
-                ecpuFreqMhz={typedMetrics.ecpu_freq_mhz}
+                pcpuFreqMhz={typedMetrics.pcpu_freq_mhz ?? null}
+                ecpuFreqMhz={typedMetrics.ecpu_freq_mhz ?? null}
                 cpuPHistory={history.cpu_p_percent}
                 cpuEHistory={history.cpu_e_percent}
                 cpuCount={typedMetrics.cpu_count}
