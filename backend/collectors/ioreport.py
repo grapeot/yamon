@@ -295,32 +295,60 @@ class IOReport:
         if not self._subscription:
             raise IOReportError("Failed to create IOReport subscription")
     
-    def get_sample_delta(self, duration_ms: int = 1000) -> Dict:
-        """Get power metrics sample delta over duration (use measured elapsed time)"""
+    def get_power_metrics(self, total_ms: int = 1000, samples: int = 4) -> Dict:
+        """
+        Get smoothed power metrics over total_ms by taking multiple deltas.
+        Mirrors macmon's approach: multiple samples -> average power.
+        """
         if not self._subscription:
             raise IOReportError("Subscription not created")
         
-        start = time.time()
-        sample1 = self._ioreport.IOReportCreateSamples(
+        samples = max(1, samples)
+        step_ms = max(1, total_ms // samples)
+        
+        # Initial sample
+        prev_sample = self._ioreport.IOReportCreateSamples(
             self._subscription, self._channels, None
         )
+        prev_time = time.time()
         
-        time.sleep(duration_ms / 1000.0)
+        acc = {
+            'cpu_power': 0.0,
+            'gpu_power': 0.0,
+            'ane_power': 0.0,
+            'dram_power': 0.0,
+            'gpu_sram_power': 0.0,
+            'system_power': 0.0,
+        }
         
-        sample2 = self._ioreport.IOReportCreateSamples(
-            self._subscription, self._channels, None
-        )
-        elapsed_ms = max(1, int((time.time() - start) * 1000))
+        for _ in range(samples):
+            time.sleep(step_ms / 1000.0)
+            cur_sample = self._ioreport.IOReportCreateSamples(
+                self._subscription, self._channels, None
+            )
+            elapsed_ms = max(1, int((time.time() - prev_time) * 1000))
+            
+            delta = self._ioreport.IOReportCreateSamplesDelta(prev_sample, cur_sample, None)
+            metrics = self._parse_sample(delta, elapsed_ms)
+            
+            for k in acc:
+                acc[k] += metrics.get(k, 0.0)
+            
+            # release
+            self._core_foundation.CFRelease(prev_sample)
+            self._core_foundation.CFRelease(delta)
+            
+            prev_sample = cur_sample
+            prev_time = time.time()
         
-        delta = self._ioreport.IOReportCreateSamplesDelta(sample1, sample2, None)
+        # release last sample
+        self._core_foundation.CFRelease(prev_sample)
         
-        metrics = self._parse_sample(delta, elapsed_ms)
+        # average
+        for k in acc:
+            acc[k] /= samples
         
-        self._core_foundation.CFRelease(sample1)
-        self._core_foundation.CFRelease(sample2)
-        self._core_foundation.CFRelease(delta)
-        
-        return metrics
+        return acc
     
     def _parse_sample(self, sample: CFDictionaryRef, duration_ms: int) -> Dict:
         """Parse IOReport sample to extract power metrics"""
