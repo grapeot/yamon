@@ -3,10 +3,11 @@ import * as echarts from 'echarts'
 
 interface GpuChartProps {
   gpuUsage: number | null
+  gpuFreqMhz: number | null
   history: number[]
 }
 
-export function GpuChart({ gpuUsage, history }: GpuChartProps) {
+export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
 
@@ -31,12 +32,16 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
 
     const updatedHistory = [...history, gpuUsage || 0].slice(-120)
 
+    const titleText = gpuFreqMhz !== null
+      ? `GPU Usage: ${(gpuUsage || 0).toFixed(1)}% (${gpuFreqMhz.toFixed(0)} MHz)`
+      : `GPU Usage: ${(gpuUsage || 0).toFixed(1)}%`
+
     chartInstance.current.setOption({
       title: {
-        text: `GPU Usage: ${(gpuUsage || 0).toFixed(1)}%`,
+        text: titleText,
         left: 'center',
         top: 10,
-        textStyle: { fontSize: 14, color: '#fff' },
+        textStyle: { fontSize: 18, color: '#fff' },
       },
       tooltip: {
         trigger: 'axis',
@@ -89,7 +94,7 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
         },
       ],
     })
-  }, [gpuUsage, history])
+  }, [gpuUsage, gpuFreqMhz, history])
 
   return (
     <div className="chart-container">

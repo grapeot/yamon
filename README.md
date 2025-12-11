@@ -1,6 +1,6 @@
 # Yamon 🍊
 
-**Visually stunning, deep system monitoring for macOS.**
+**Visually pleasing, deep system monitoring for macOS.**
 
 Yamon is a modern system monitor designed specifically for Apple Silicon. It goes beyond standard CPU/RAM usage to reveal the heartbeat of your Mac — from Neural Engine activity to precise power consumption — all in a beautiful, real-time web interface.
 

@@ -61,7 +61,7 @@ export function PowerChart({
         text: `Power: CPU: ${(cpuPower || 0).toFixed(2)}W, GPU: ${(gpuPower || 0).toFixed(2)}W, ANE: ${(anePower || 0).toFixed(2)}W, System: ${systemPower !== null ? systemPower.toFixed(2) + 'W' : 'N/A'}`,
         left: 'center',
         top: 10,
-        textStyle: { fontSize: 12, color: '#fff' },
+        textStyle: { fontSize: 18, color: '#fff' },
       },
       tooltip: {
         trigger: 'axis',

@@ -576,16 +576,65 @@ class AppleAPICollector:
         # powermetrics outputs GPU usage in the "**** GPU usage ****" section
         # Format: "GPU HW active residency: X.XX%" (preferred, direct value)
         # Or "GPU idle residency: X.XX%" (calculate: 100% - idle)
+        # We scale it by frequency to get "performance utilization" like macmon:
+        # scaled_usage = (avg_freq × active_residency) / max_freq
         
         # First, try to find GPU HW active residency (preferred, more direct)
         gpu_active_match = re.search(r'GPU HW active residency[:\s]+([\d.]+)\s*%', text, re.IGNORECASE | re.MULTILINE)
+        hw_active_residency = None
         if gpu_active_match:
             try:
-                metrics.gpu_usage = float(gpu_active_match.group(1))
-                import sys
-                print(f"[DEBUG] Found GPU usage via HW active residency: {metrics.gpu_usage}%", file=sys.stderr)
+                hw_active_residency = float(gpu_active_match.group(1))
             except (ValueError, IndexError):
                 pass
+        
+        # Extract GPU HW active frequency (average frequency)
+        gpu_active_freq_match = re.search(r'GPU HW active frequency[:\s]+([\d.]+)\s*MHz', text, re.IGNORECASE | re.MULTILINE)
+        avg_freq_mhz = None
+        if gpu_active_freq_match:
+            try:
+                avg_freq_mhz = float(gpu_active_freq_match.group(1))
+            except (ValueError, IndexError):
+                pass
+        
+        # Extract max frequency from frequency distribution
+        # Format: "GPU HW active residency: X.XX% (338 MHz: 2.0% 618 MHz: 36% ... 1578 MHz: 0%)"
+        max_freq_mhz = None
+        if hw_active_residency is not None:
+            # Extract the GPU usage section to avoid matching CPU frequencies
+            gpu_section_match = re.search(r'\*\*\*\* GPU usage \*\*\*\*(.*?)(?=\*\*\*\*|\Z)', text, re.IGNORECASE | re.DOTALL)
+            search_text = gpu_section_match.group(1) if gpu_section_match else text
+            
+            # Try to find all frequencies in the GPU frequency distribution
+            # Pattern: "1578 MHz: 0%" or "1578 MHz:  0%"
+            freq_matches = re.findall(r'(\d+)\s*MHz[:\s]+[\d.]+%', search_text)
+            if freq_matches:
+                try:
+                    frequencies = [float(f) for f in freq_matches]
+                    max_freq_mhz = max(frequencies) if frequencies else None
+                except (ValueError, IndexError):
+                    pass
+            
+            # If we still don't have max_freq, try to use current GPU frequency as a proxy
+            # (though this might not be the true max, it's better than nothing)
+            if max_freq_mhz is None and metrics.gpu_freq_mhz is not None:
+                # Use a reasonable multiplier (most GPUs max freq is 2-3x the current freq when idle)
+                # Or we could use the current freq if it's already high
+                max_freq_mhz = max(metrics.gpu_freq_mhz * 2.5, metrics.gpu_freq_mhz)
+        
+        # Calculate scaled usage if we have all required values
+        if hw_active_residency is not None and avg_freq_mhz is not None and max_freq_mhz is not None and max_freq_mhz > 0:
+            # Scale by frequency: (avg_freq × active_residency) / max_freq
+            # This gives us "performance utilization" similar to macmon
+            scaled_usage = (avg_freq_mhz * hw_active_residency / 100.0) / max_freq_mhz * 100.0
+            metrics.gpu_usage = scaled_usage
+            import sys
+            print(f"[DEBUG] GPU usage scaled: {scaled_usage:.2f}% (residency: {hw_active_residency}%, avg_freq: {avg_freq_mhz}MHz, max_freq: {max_freq_mhz}MHz)", file=sys.stderr)
+        elif hw_active_residency is not None:
+            # Fallback to raw residency if we don't have frequency info
+            metrics.gpu_usage = hw_active_residency
+            import sys
+            print(f"[DEBUG] GPU usage (raw residency): {hw_active_residency}%", file=sys.stderr)
         
         # Fallback: try GPU idle residency and calculate usage
         if metrics.gpu_usage is None:

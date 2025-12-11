@@ -113,7 +113,6 @@ function App() {
                 cpuPerCore={typedMetrics.cpu_per_core}
                 cpuPPercent={typedMetrics.cpu_p_percent}
                 cpuEPercent={typedMetrics.cpu_e_percent}
-                cpuPercentHistory={history.cpu_percent}
                 cpuPHistory={history.cpu_p_percent}
                 cpuEHistory={history.cpu_e_percent}
                 cpuCount={typedMetrics.cpu_count}
@@ -132,6 +131,7 @@ function App() {
             <div className="metric-section">
               <GpuChart
                 gpuUsage={typedMetrics.gpu_usage}
+                gpuFreqMhz={typedMetrics.gpu_freq_mhz}
                 history={history.gpu_usage}
               />
             </div>
