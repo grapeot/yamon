@@ -7,6 +7,7 @@ A modern, real-time system monitoring tool for macOS, featuring a web-based inte
 - **Real-time Monitoring**: Live updates via WebSocket for all system metrics
 - **Historical Charts**: Visualize up to 2 minutes of historical data with smooth, responsive charts
 - **Web-based UI**: Modern, responsive web interface built with React and ECharts
+- **Pure Python Implementation**: Uses Python `ctypes` to directly access macOS native APIs (IOReport, SMC) - **no sudo required**
 - **Apple Silicon Support**: Deep integration with Apple Silicon hardware metrics including:
   - Per-core CPU usage (P-cores and E-cores distinction)
   - GPU usage and frequency
@@ -23,8 +24,9 @@ Yamon follows a client-server architecture:
 - **Frontend**: React + Vite application that displays metrics in real-time
 - **Data Collection**: 
   - `psutil` for CPU, Memory, and Network metrics
-  - `powermetrics` for Apple Silicon power and GPU metrics (requires sudo)
-  - SMC API for system total power (requires sudo)
+  - **IOReport API** (Python ctypes implementation) for Apple Silicon power metrics - no sudo required
+  - **SMC API** (Python ctypes implementation) for system total power - no sudo required
+  - `powermetrics` as fallback for Apple Silicon metrics (requires sudo)
   - `ioreg` as fallback for GPU usage
 
 ## Project Structure
@@ -38,7 +40,8 @@ Yamon follows a client-server architecture:
 │   ├── collectors/           # Data collection logic
 │   │   ├── collector.py      # Main metrics collector
 │   │   ├── apple_api.py      # Apple Silicon specific metrics
-│   │   └── smc.py            # SMC API for system power
+│   │   ├── ioreport.py       # IOReport API implementation (Python ctypes)
+│   │   └── smc.py            # SMC API implementation (Python ctypes)
 │   ├── history.py            # Historical data management
 │   ├── main.py               # FastAPI application entry point
 │   └── static/               # Static files (generated from frontend build)
@@ -67,7 +70,6 @@ Yamon follows a client-server architecture:
 - **Python 3.10+** (Python 3.12 recommended)
 - **Node.js 18+** (for frontend development)
 - **macOS** (for Apple Silicon metrics; Intel Macs will show basic metrics only)
-- **sudo privileges** (required for Apple Silicon power and GPU metrics)
 
 ## Installation
 
@@ -127,15 +129,7 @@ Or use the convenience script:
 ./scripts/run_backend.sh 8001
 ```
 
-**Note**: Currently, Apple Silicon metrics (GPU, ANE, Power) require `sudo` because we use `powermetrics` command-line tool. 
-
-**Future Improvement**: We plan to migrate to IOReport API (like `mactop` does) which doesn't require sudo. IOReport API is a user-level API provided by macOS that can access CPU, GPU, ANE, and DRAM power consumption without root privileges.
-
-For now, run with `sudo`:
-
-```bash
-sudo python -m uvicorn backend.main:app --reload --port 8001
-```
+**Note**: Yamon uses **pure Python implementation** with `ctypes` to access macOS native APIs (IOReport and SMC) directly, eliminating the need for `sudo` privileges. This is a Python port of the approach used by tools like `mactop` and `macmon`.
 
 The backend will be available at:
 - **API**: http://localhost:8001/api/metrics
@@ -184,10 +178,10 @@ cp -r frontend/dist/* backend/static/
 
 ### 2. Run Production Server
 
-Start the production server (with sudo for Apple Silicon metrics):
+Start the production server:
 
 ```bash
-sudo python -m uvicorn backend.main:app --host 0.0.0.0 --port 8001
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8001
 ```
 
 The application will be available at http://localhost:8001
@@ -231,12 +225,13 @@ The application will be available at http://localhost:8001
 - **Update Frequency**: 1 second intervals
 - **History Buffer**: 120 data points (2 minutes at 1s interval)
 - **Collection Methods**:
-  - `psutil`: Cross-platform CPU, Memory, Network
-  - `powermetrics`: Apple Silicon power and GPU metrics (requires sudo)
-  - SMC API: System total power via IOKit (currently requires sudo, but can work without it)
+  - `psutil`: Cross-platform CPU, Memory, Network metrics
+  - **IOReport API** (Python ctypes): Apple Silicon CPU, GPU, ANE, and DRAM power consumption - **no sudo required**
+  - **SMC API** (Python ctypes): System total power (PSTR) via IOKit - **no sudo required**
+  - `powermetrics`: Fallback for Apple Silicon metrics (requires sudo)
   - `ioreg`: Fallback for GPU usage
 
-**Note**: Currently we use `powermetrics` which requires sudo. Tools like `mactop` avoid sudo by using IOReport API directly (a user-level API). We plan to migrate to IOReport API in the future to eliminate the sudo requirement.
+**Implementation**: Yamon uses pure Python with `ctypes` to directly call macOS native APIs (IOReport and SMC frameworks), similar to how `mactop` (Go) and `macmon` (Rust) access these APIs. This Python implementation provides the same functionality without requiring root privileges.
 
 ### API Endpoints
 
@@ -258,20 +253,22 @@ The application will be available at http://localhost:8001
 
 If GPU, ANE, or Power metrics show as "N/A" or 0:
 
-1. **Check sudo**: Ensure the backend is running with `sudo`
-2. **Check powermetrics**: Verify `powermetrics` is available:
+1. **Check IOReport API**: Verify IOReport framework is available (should be available on macOS by default)
+2. **Check Apple Silicon**: Ensure you're running on Apple Silicon Mac (ARM64)
+3. **Debug mode**: Enable debug logging in the backend to see detailed error messages:
    ```bash
-   which powermetrics
+   python -m uvicorn backend.main:app --reload --port 8001
+   # Check stderr for debug messages
    ```
-3. **Check permissions**: Some metrics require root privileges
+4. **Fallback to powermetrics**: If IOReport fails, the system will fallback to `powermetrics` (requires sudo)
 
 ### SMC API Errors
 
 If system power shows "N/A":
 
-1. **Run with sudo**: SMC API requires root privileges
-2. **Check IOKit**: Ensure macOS IOKit framework is available
-3. **Debug mode**: Enable debug logging in the backend to see detailed error messages
+1. **Check IOKit**: Ensure macOS IOKit framework is available (should be available by default)
+2. **Debug mode**: Enable debug logging in the backend to see detailed error messages
+3. **Permissions**: SMC API should work without sudo, but if it fails, check macOS security settings
 
 ### Frontend Not Connecting
 
