@@ -1,5 +1,24 @@
 import { useEffect, useState, useRef } from 'react'
-import type { SystemMetrics } from '../types/metrics'
+
+// Define types inline to avoid import issues
+export interface SystemMetrics {
+  cpu_percent: number
+  cpu_per_core: number[]
+  cpu_count: number
+  memory_percent: number
+  memory_total: number
+  memory_used: number
+  memory_available: number
+  network_sent_rate: number
+  network_recv_rate: number
+  cpu_power: number | null
+  gpu_power: number | null
+  ane_power: number | null
+  system_power: number | null
+  gpu_usage: number | null
+  gpu_freq_mhz: number | null
+  ane_usage: number | null
+}
 
 export function useWebSocket() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
@@ -50,4 +69,3 @@ export function useWebSocket() {
 
   return { metrics, connected }
 }
-

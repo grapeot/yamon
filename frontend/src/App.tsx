@@ -1,8 +1,21 @@
 import { useState, useEffect } from 'react'
-import { useWebSocket } from './hooks/useWebSocket'
+import { useWebSocket, SystemMetrics } from './hooks/useWebSocket'
 import { MetricCard } from './components/MetricCard'
-import type { SystemMetrics, HistoryData } from './types/metrics'
 import './App.css'
+
+// Define HistoryData inline
+interface HistoryData {
+  cpu_percent: number[]
+  memory_percent: number[]
+  network_sent_rate: number[]
+  network_recv_rate: number[]
+  cpu_power: number[]
+  gpu_power: number[]
+  ane_power: number[]
+  system_power: number[]
+  gpu_usage: number[]
+  ane_usage: number[]
+}
 
 function App() {
   const { metrics, connected } = useWebSocket()
