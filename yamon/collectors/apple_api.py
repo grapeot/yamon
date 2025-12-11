@@ -675,6 +675,10 @@ class AppleAPICollector:
                         if self._debug:
                             import sys
                             print(f"[DEBUG] E-core frequencies: {e_freqs}, using max: {metrics.ecpu_freq_mhz} MHz", file=sys.stderr)
+                    else:
+                        if self._debug:
+                            import sys
+                            print("[DEBUG] No E-core indices found", file=sys.stderr)
                     
                     if p_core_indices:
                         p_freqs = [freq for _, freq in p_core_indices]
@@ -682,6 +686,10 @@ class AppleAPICollector:
                         if self._debug:
                             import sys
                             print(f"[DEBUG] P-core frequencies: {p_freqs}, using max: {metrics.pcpu_freq_mhz} MHz", file=sys.stderr)
+                    else:
+                        if self._debug:
+                            import sys
+                            print("[DEBUG] No P-core indices found", file=sys.stderr)
             except (ValueError, IndexError) as e:
                 if self._debug:
                     import sys
