@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
 import { MetricCard } from './components/MetricCard'
-import { SystemMetrics, HistoryData } from './types/metrics'
+import type { SystemMetrics, HistoryData } from './types/metrics'
 import './App.css'
 
 function App() {

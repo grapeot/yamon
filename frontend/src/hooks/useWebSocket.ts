@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { SystemMetrics } from '../types/metrics'
+import type { SystemMetrics } from '../types/metrics'
 
 export function useWebSocket() {
   const [metrics, setMetrics] = useState<SystemMetrics | null>(null)
