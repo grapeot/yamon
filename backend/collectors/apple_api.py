@@ -128,8 +128,9 @@ class AppleAPICollector:
             return None
         
         # Try IOReport API first (no sudo required)
+        ioreport_result = None
         if self._ioreport_available and self._ioreport:
-            result = self._collect_via_ioreport()
+            ioreport_result = self._collect_via_ioreport()
             # If IOReport returns something but power is all zero, try fallback
             def _has_power(m: AppleMetrics) -> bool:
                 return any([
@@ -138,8 +139,27 @@ class AppleAPICollector:
                     (m.ane_power or 0) > 0,
                     (m.dram_power or 0) > 0,
                 ])
-            if result is not None and _has_power(result):
-                return result
+            if ioreport_result is not None and _has_power(ioreport_result):
+                # IOReport successfully got power data, but it doesn't provide GPU/ANE usage
+                # Try to get GPU/ANE usage from powermetrics and merge
+                if self._powermetrics_available:
+                    powermetrics_result = self._collect_via_powermetrics()
+                    if powermetrics_result is not None:
+                        # Merge GPU/ANE usage from powermetrics into IOReport result
+                        # Only merge if powermetrics actually got the data (not None)
+                        if powermetrics_result.gpu_usage is not None:
+                            ioreport_result.gpu_usage = powermetrics_result.gpu_usage
+                            if self._debug:
+                                import sys
+                                print(f"[DEBUG] Merged GPU usage from powermetrics: {ioreport_result.gpu_usage}%", file=sys.stderr)
+                        if powermetrics_result.ane_usage is not None:
+                            ioreport_result.ane_usage = powermetrics_result.ane_usage
+                            if self._debug:
+                                import sys
+                                print(f"[DEBUG] Merged ANE usage from powermetrics: {ioreport_result.ane_usage}%", file=sys.stderr)
+                        if powermetrics_result.gpu_freq_mhz is not None:
+                            ioreport_result.gpu_freq_mhz = powermetrics_result.gpu_freq_mhz
+                return ioreport_result
             # If no power data, attempt fallback to powermetrics
             if self._debug:
                 import sys
