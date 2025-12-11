@@ -43,6 +43,7 @@ class IOReport:
         self._iokit = None
         self._subscription = None
         self._channels = None
+        self._string_buffers = []  # Keep references to prevent garbage collection
         
         if self._is_macos:
             self._init_frameworks()
@@ -199,9 +200,10 @@ class IOReport:
             return None
         
         bytes_data = s.encode('utf-8')
-        # Create a properly aligned buffer - use c_char_p for string data
-        # Store the buffer to prevent garbage collection
-        buf = ctypes.create_string_buffer(bytes_data)
+        # Create a properly aligned buffer and keep reference to prevent GC
+        buf = (ctypes.c_uint8 * len(bytes_data))(*bytes_data)
+        # Store buffer reference to prevent garbage collection
+        self._string_buffers.append(buf)
         return self._core_foundation.CFStringCreateWithBytesNoCopy(
             kCFAllocatorDefault,
             ctypes.cast(buf, ctypes.POINTER(ctypes.c_uint8)),

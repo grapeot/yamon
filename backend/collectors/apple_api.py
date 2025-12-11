@@ -50,12 +50,20 @@ class AppleAPICollector:
     
     def _init_smc(self):
         """Initialize SMC API for system power"""
+        # Note: SMC API may require special permissions even with sudo
+        # For now, we'll try to initialize it but won't fail if it doesn't work
+        # IOReport should provide CPU/GPU/ANE power, and SMC is mainly for system total power
         try:
             try:
                 from backend.collectors.smc import SMC
             except ImportError:
                 from collectors.smc import SMC
             self._smc = SMC(debug=self._debug)
+            # Check if connection was actually established
+            if not self._smc._conn:
+                if self._debug:
+                    import sys
+                    print("[DEBUG] SMC connection not established, system power may show as N/A", file=sys.stderr)
         except Exception as e:
             if self._debug:
                 import sys

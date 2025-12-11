@@ -189,7 +189,8 @@ class SMC:
                                 import sys
                                 error_hex = hex(result)
                                 if result == 0xE00002C2:
-                                    print(f"[DEBUG] SMC IOServiceOpen failed: Not privileged, error: {error_hex}", file=sys.stderr)
+                                    print(f"[DEBUG] SMC IOServiceOpen failed: Not privileged (even with sudo, SMC may require special entitlements), error: {error_hex}", file=sys.stderr)
+                                    print(f"[DEBUG] This is expected - SMC API may not be accessible. System power will show as N/A.", file=sys.stderr)
                                 else:
                                     print(f"[DEBUG] SMC IOServiceOpen failed, error: {error_hex}", file=sys.stderr)
                 
