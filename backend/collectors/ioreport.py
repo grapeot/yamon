@@ -397,7 +397,13 @@ class IOReport:
             # Note: IOReport subscription cleanup may need special handling
             # For now, we'll rely on Python's garbage collection
             self._subscription = None
+        
+        # Clear string buffers (CFStrings should be released before this)
+        self._string_buffers.clear()
     
     def __del__(self):
-        self.close()
+        try:
+            self.close()
+        except Exception:
+            pass  # Ignore errors during cleanup
 
