@@ -83,7 +83,7 @@ class YamonApp(App):
     .chart-box {
         border: solid $primary;
         padding: 1;
-        height: 6;
+        height: 12;
         width: 1fr;
         margin-top: 0;
         margin-bottom: 0;
@@ -99,7 +99,7 @@ class YamonApp(App):
         super().__init__()
         self.collector = MetricsCollector()
         self.history = MetricsHistory(max_size=60)  # 60 seconds of history
-        self.chart_renderer = ChartRenderer(width=50, height=6, use_unicode=True)
+        self.chart_renderer = ChartRenderer(width=50, height=12, use_unicode=True)
         self.update_timer: Timer | None = None
     
     def compose(self) -> ComposeResult:
