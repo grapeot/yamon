@@ -106,13 +106,44 @@ async def websocket_metrics(websocket: WebSocket):
                 cpu_p_percent = 0.0
                 cpu_e_percent = 0.0
             
+            # 确保 cpu_percent = cpu_p_percent + cpu_e_percent（修复浮点数精度问题）
+            cpu_percent_calculated = cpu_p_percent + cpu_e_percent
+            
+            # 根据频率修正 CPU usage（类似 GPU 的方式）
+            # 需要最大频率来计算 scaled usage
+            # 对于 Apple Silicon，P-core 最大频率通常在 3000-4000 MHz，E-core 在 2000-2500 MHz
+            pcpu_max_freq_mhz = 4000.0  # 默认最大 P-core 频率
+            ecpu_max_freq_mhz = 2500.0  # 默认最大 E-core 频率
+            
+            # 如果知道实际频率，使用实际频率；否则使用默认值
+            if metrics.pcpu_freq_mhz is not None:
+                # 如果当前频率接近最大值，使用当前频率作为参考
+                pcpu_max_freq_mhz = max(metrics.pcpu_freq_mhz * 1.2, 3000.0)
+            if metrics.ecpu_freq_mhz is not None:
+                ecpu_max_freq_mhz = max(metrics.ecpu_freq_mhz * 1.2, 2000.0)
+            
+            # 计算 scaled usage: (freq × usage) / max_freq
+            pcpu_scaled = 0.0
+            ecpu_scaled = 0.0
+            if metrics.pcpu_freq_mhz is not None and pcpu_max_freq_mhz > 0:
+                pcpu_scaled = (metrics.pcpu_freq_mhz * cpu_p_percent / 100.0) / pcpu_max_freq_mhz * 100.0
+            else:
+                pcpu_scaled = cpu_p_percent
+            
+            if metrics.ecpu_freq_mhz is not None and ecpu_max_freq_mhz > 0:
+                ecpu_scaled = (metrics.ecpu_freq_mhz * cpu_e_percent / 100.0) / ecpu_max_freq_mhz * 100.0
+            else:
+                ecpu_scaled = cpu_e_percent
+            
+            cpu_percent_scaled = pcpu_scaled + ecpu_scaled
+            
             # 发送数据
             await websocket.send_json({
-                "cpu_percent": metrics.cpu_percent,
+                "cpu_percent": cpu_percent_scaled,  # 使用频率修正后的值
                 "cpu_per_core": metrics.cpu_per_core,
                 "cpu_count": metrics.cpu_count,
-                "cpu_p_percent": cpu_p_percent,
-                "cpu_e_percent": cpu_e_percent,
+                "cpu_p_percent": pcpu_scaled,  # P-core scaled usage
+                "cpu_e_percent": ecpu_scaled,  # E-core scaled usage
                 "pcpu_freq_mhz": metrics.pcpu_freq_mhz,
                 "ecpu_freq_mhz": metrics.ecpu_freq_mhz,
                 "memory_percent": metrics.memory_percent,
