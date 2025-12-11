@@ -1,6 +1,6 @@
 /** System metrics type definitions */
 
-export interface SystemMetrics {
+export type SystemMetrics = {
   cpu_percent: number
   cpu_per_core: number[]
   cpu_count: number
@@ -19,7 +19,7 @@ export interface SystemMetrics {
   ane_usage: number | null
 }
 
-export interface HistoryData {
+export type HistoryData = {
   cpu_percent: number[]
   memory_percent: number[]
   network_sent_rate: number[]
