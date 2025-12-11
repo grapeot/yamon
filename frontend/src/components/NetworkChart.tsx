@@ -78,7 +78,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '35%',
+        top: '45%',
         containLabel: true,
       },
       animation: false,

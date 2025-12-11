@@ -53,7 +53,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '30%',
+        top: '40%',
         containLabel: true,
       },
       animation: false,

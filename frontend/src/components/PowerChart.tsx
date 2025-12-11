@@ -81,7 +81,7 @@ export function PowerChart({
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '35%',
+        top: '45%',
         containLabel: true,
       },
       animation: false,

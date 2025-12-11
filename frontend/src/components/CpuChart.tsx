@@ -101,7 +101,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '30%',
+        top: '40%',
         containLabel: true,
       },
       animation: false,
