@@ -57,7 +57,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         text: `Network: ↑ ${formatBytes(sentRate)} ↓ ${formatBytes(recvRate)}`,
         left: 'center',
         top: 10,
-        textStyle: { fontSize: 14, color: '#fff' },
+        textStyle: { fontSize: 18, color: '#fff' },
       },
       tooltip: {
         trigger: 'axis',
@@ -72,7 +72,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
       legend: {
         data: ['Upload', 'Download'],
         top: '25%',
-        textStyle: { color: '#aaa' },
+        textStyle: { color: '#aaa', fontSize: 14 },
       },
       grid: {
         left: '3%',
@@ -92,9 +92,10 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         type: 'value',
         min: 0,
         name: 'Bytes/s',
-        nameTextStyle: { color: '#aaa' },
+        nameTextStyle: { color: '#aaa', fontSize: 12 },
         axisLabel: { 
           color: '#aaa',
+          fontSize: 12,
           formatter: (value: number) => {
             const units = ['B', 'KB', 'MB', 'GB']
             let size = value

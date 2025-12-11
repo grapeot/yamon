@@ -38,7 +38,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
         text: `Memory Usage: ${memoryPercent.toFixed(1)}%`,
         left: 'center',
         top: 10,
-        textStyle: { fontSize: 14, color: '#fff' },
+        textStyle: { fontSize: 18, color: '#fff' },
       },
       tooltip: {
         trigger: 'axis',
@@ -68,8 +68,8 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
         min: 0,
         max: 100,
         name: 'Usage %',
-        nameTextStyle: { color: '#aaa' },
-        axisLabel: { color: '#aaa' },
+        nameTextStyle: { color: '#aaa', fontSize: 12 },
+        axisLabel: { color: '#aaa', fontSize: 12 },
         splitLine: { lineStyle: { color: '#333' } },
       },
       series: [

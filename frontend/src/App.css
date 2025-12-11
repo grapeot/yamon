@@ -15,14 +15,14 @@
 
 .app-header h1 {
   margin: 0;
-  font-size: 1.5rem;
+  font-size: 2rem;
   color: #fff;
 }
 
 .status {
   padding: 0.5rem 1rem;
   border-radius: 4px;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
 }
 
 .status.connected {
@@ -42,7 +42,7 @@
 .loading {
   text-align: center;
   padding: 3rem;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   color: #888;
 }
 
@@ -67,7 +67,7 @@
 
 .metric-section h2 {
   margin: 0 0 1rem 0;
-  font-size: 1.2rem;
+  font-size: 1.5rem;
   color: #fff;
   border-bottom: 1px solid #3a3a3a;
   padding-bottom: 0.5rem;
@@ -81,13 +81,13 @@
 }
 
 .metric-title {
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   color: #aaa;
   margin-bottom: 0.5rem;
 }
 
 .metric-value {
-  font-size: 1.5rem;
+  font-size: 1.8rem;
   font-weight: bold;
   color: #fff;
 }

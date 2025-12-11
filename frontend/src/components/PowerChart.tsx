@@ -75,7 +75,7 @@ export function PowerChart({
       legend: {
         data: ['CPU', 'GPU', 'ANE'],
         top: '25%',
-        textStyle: { color: '#aaa' },
+        textStyle: { color: '#aaa', fontSize: 14 },
       },
       grid: {
         left: '3%',
@@ -95,8 +95,8 @@ export function PowerChart({
         type: 'value',
         min: 0,
         name: 'Power (W)',
-        nameTextStyle: { color: '#aaa' },
-        axisLabel: { color: '#aaa' },
+        nameTextStyle: { color: '#aaa', fontSize: 12 },
+        axisLabel: { color: '#aaa', fontSize: 12 },
         splitLine: { lineStyle: { color: '#333' } },
       },
       series: [

@@ -60,8 +60,8 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
         min: 0,
         max: 100,
         name: 'Usage %',
-        nameTextStyle: { color: '#aaa' },
-        axisLabel: { color: '#aaa' },
+        nameTextStyle: { color: '#aaa', fontSize: 12 },
+        axisLabel: { color: '#aaa', fontSize: 12 },
         splitLine: { lineStyle: { color: '#333' } },
       },
       series: [

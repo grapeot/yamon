@@ -36,7 +36,7 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
         text: `ANE Usage: ${(aneUsage || 0).toFixed(1)}%`,
         left: 'center',
         top: 10,
-        textStyle: { fontSize: 14, color: '#fff' },
+        textStyle: { fontSize: 18, color: '#fff' },
       },
       tooltip: {
         trigger: 'axis',
@@ -60,8 +60,8 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
         min: 0,
         max: 100,
         name: 'Usage %',
-        nameTextStyle: { color: '#aaa' },
-        axisLabel: { color: '#aaa' },
+        nameTextStyle: { color: '#aaa', fontSize: 12 },
+        axisLabel: { color: '#aaa', fontSize: 12 },
         splitLine: { lineStyle: { color: '#333' } },
       },
       series: [
