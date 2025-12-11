@@ -121,17 +121,13 @@ class YamonApp(App):
                     yield Static("", classes="chart-box", id="network-chart")
                     
                     yield Static("GPU Usage: N/A", id="gpu-label")
+                    yield Static("", classes="chart-box", id="gpu-chart")
                     
                     yield Static("ANE Usage: N/A", id="ane-label")
+                    yield Static("", classes="chart-box", id="ane-chart")
                 
                 with Vertical(id="right-column"):
-                    yield Static("CPU Power: N/A", id="cpu-power-label")
-                    
-                    yield Static("GPU Power: N/A", id="gpu-power-label")
-                    
-                    yield Static("ANE Power: N/A", id="ane-power-label")
-                    
-                    yield Static("System Power: N/A", id="system-power-label")
+                    yield Static("Power: N/A", id="system-power-label")
                     yield Static("", classes="chart-box", id="power-chart")
             
             with Container(id="cpu-cores-container"):
@@ -194,28 +190,7 @@ class YamonApp(App):
         else:
             ane_label.update("ANE Usage: N/A")
         
-        # CPU Power - update label with value
-        cpu_power_label = self.query_one("#cpu-power-label", Static)
-        if metrics.cpu_power is not None:
-            cpu_power_label.update(f"CPU Power: {metrics.cpu_power:.2f} W")
-        else:
-            cpu_power_label.update("CPU Power: N/A")
-        
-        # GPU Power - update label with value
-        gpu_power_label = self.query_one("#gpu-power-label", Static)
-        if metrics.gpu_power is not None:
-            gpu_power_label.update(f"GPU Power: {metrics.gpu_power:.2f} W")
-        else:
-            gpu_power_label.update("GPU Power: N/A")
-        
-        # ANE Power - update label with value
-        ane_power_label = self.query_one("#ane-power-label", Static)
-        if metrics.ane_power is not None:
-            ane_power_label.update(f"ANE Power: {metrics.ane_power:.2f} W")
-        else:
-            ane_power_label.update("ANE Power: N/A")
-        
-        # System Power - update label with all power values
+        # Power - update label with all power values
         system_power_label = self.query_one("#system-power-label", Static)
         power_parts = []
         if metrics.cpu_power is not None:
@@ -266,6 +241,26 @@ class YamonApp(App):
             try:
                 network_chart_widget = self.query_one("#network-chart", Static)
                 network_chart_widget.update(network_chart)
+            except Exception:
+                pass
+        
+        # GPU Usage Chart
+        gpu_usage_values = self.history.gpu_usage.get_values()
+        if gpu_usage_values:
+            gpu_chart = self.chart_renderer.render(gpu_usage_values, min_value=0, max_value=100, show_y_axis=True)
+            try:
+                gpu_chart_widget = self.query_one("#gpu-chart", Static)
+                gpu_chart_widget.update(gpu_chart)
+            except Exception:
+                pass
+        
+        # ANE Usage Chart
+        ane_usage_values = self.history.ane_usage.get_values()
+        if ane_usage_values:
+            ane_chart = self.chart_renderer.render(ane_usage_values, min_value=0, max_value=100, show_y_axis=True)
+            try:
+                ane_chart_widget = self.query_one("#ane-chart", Static)
+                ane_chart_widget.update(ane_chart)
             except Exception:
                 pass
         

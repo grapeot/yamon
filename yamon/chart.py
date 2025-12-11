@@ -55,11 +55,21 @@ class ChartRenderer:
             scaled.append(int(normalized * self.height))
         
         # Get latest values (rightmost = newest)
-        latest_scaled = scaled[-self.width:] if len(scaled) > self.width else scaled
-        # Pad with spaces on the left if we have fewer values than width
-        if len(latest_scaled) < self.width:
-            padding = [' '] * (self.width - len(latest_scaled))
-            latest_scaled = padding + latest_scaled
+        # Always take the last width values, pad with zeros (not spaces) on the left
+        latest_values = values[-self.width:] if len(values) > self.width else values
+        latest_scaled = []
+        
+        # Pad with zeros on the left if we have fewer values than width
+        if len(latest_values) < self.width:
+            padding_count = self.width - len(latest_values)
+            # Add zero values for padding
+            for _ in range(padding_count):
+                latest_scaled.append(0)  # Zero height for padding
+        
+        # Scale the actual values
+        for value in latest_values:
+            normalized = (value - min_value) / value_range
+            latest_scaled.append(int(normalized * self.height))
         
         # Render chart (right to left, newest on right)
         chart_lines = []
@@ -230,12 +240,14 @@ class ChartRenderer:
         # Render chart
         chart_lines = []
         
-        # Top half: upload (inverted, growing down from top)
+        # Top half: upload (growing up from bottom of top half)
         for row in range(half_height):
             line = []
             for col in range(width):
                 bar_height = sent_scaled[col]
-                if row < bar_height:
+                # Row 0 is top, row (half_height-1) is bottom of top half
+                # We want bars to grow from bottom (row half_height-1) upward
+                if row >= (half_height - bar_height):
                     line.append('█')
                 else:
                     line.append(' ')
@@ -244,12 +256,13 @@ class ChartRenderer:
         # Middle separator
         chart_lines.append('─' * width)
         
-        # Bottom half: download (growing up from bottom)
+        # Bottom half: download (growing down from top of bottom half)
         for row in range(half_height):
             line = []
             for col in range(width):
                 bar_height = recv_scaled[col]
-                if row >= (half_height - bar_height):
+                # Row 0 is top of bottom half, we want bars to grow from top downward
+                if row < bar_height:
                     line.append('█')
                 else:
                     line.append(' ')
