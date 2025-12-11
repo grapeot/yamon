@@ -127,7 +127,11 @@ Or use the convenience script:
 ./scripts/run_backend.sh 8001
 ```
 
-**Note**: For Apple Silicon metrics (GPU, ANE, Power), you need to run with `sudo`:
+**Note**: Currently, Apple Silicon metrics (GPU, ANE, Power) require `sudo` because we use `powermetrics` command-line tool. 
+
+**Future Improvement**: We plan to migrate to IOReport API (like `mactop` does) which doesn't require sudo. IOReport API is a user-level API provided by macOS that can access CPU, GPU, ANE, and DRAM power consumption without root privileges.
+
+For now, run with `sudo`:
 
 ```bash
 sudo python -m uvicorn backend.main:app --reload --port 8001
