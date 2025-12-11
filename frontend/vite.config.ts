@@ -22,7 +22,4 @@ export default defineConfig({
     assetsDir: 'assets',
     sourcemap: false,
   },
-  optimizeDeps: {
-    exclude: ['src/types/metrics.ts'],
-  },
 })
