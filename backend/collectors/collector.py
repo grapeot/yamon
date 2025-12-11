@@ -52,8 +52,8 @@ class MetricsCollector:
     
     def _init_apple_collector(self):
         """Initialize Apple API collector if available"""
-               try:
-                   from backend.collectors.apple_api import AppleAPICollector
+        try:
+            from backend.collectors.apple_api import AppleAPICollector
             import os
             # Enable debug if running with sudo
             debug = os.geteuid() == 0  # Check if running as root
