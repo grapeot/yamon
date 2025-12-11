@@ -150,9 +150,17 @@ class IOReport:
         self._ioreport.IOReportMergeChannels.restype = None
         
         # IOReportCreateSubscription
+        # Signature: IOReportCreateSubscription(void* refcon,
+        #                                      CFMutableDictionaryRef channels,
+        #                                      CFMutableDictionaryRef* subscription_details,
+        #                                      uint64_t options,
+        #                                      CFTypeRef allocator) -> IOReportSubscriptionRef
         self._ioreport.IOReportCreateSubscription.argtypes = [
-            ctypes.c_void_p, CFMutableDictionaryRef,
-            ctypes.POINTER(CFMutableDictionaryRef), ctypes.c_uint64, CFTypeRef
+            ctypes.c_void_p,             # refcon
+            CFMutableDictionaryRef,      # channels
+            ctypes.POINTER(CFMutableDictionaryRef),  # subscription_details (out)
+            ctypes.c_uint64,             # options
+            CFTypeRef,                   # allocator
         ]
         self._ioreport.IOReportCreateSubscription.restype = ctypes.c_void_p
         
@@ -275,9 +283,13 @@ class IOReport:
             )
         
         # Create subscription
-        sub_ptr = ctypes.POINTER(CFMutableDictionaryRef)()
+        sub_details = CFMutableDictionaryRef()
         self._subscription = self._ioreport.IOReportCreateSubscription(
-            None, self._channels, ctypes.byref(sub_ptr), 0, None
+            None,
+            self._channels,
+            ctypes.byref(sub_details),
+            0,
+            None
         )
         
         if not self._subscription:
