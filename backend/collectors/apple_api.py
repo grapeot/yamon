@@ -82,13 +82,14 @@ class AppleAPICollector:
         """Collect metrics using powermetrics command"""
         try:
             # Run powermetrics with a short sample interval
-            # Format: powermetrics -i 1000 -n 1 --samplers cpu_power,gpu_power,ane_power,gpu
-            # Note: 'gpu' sampler provides GPU usage and frequency
+            # Format: powermetrics -i 1000 -n 1 --samplers cpu_power,gpu_power,ane_power
+            # Note: powermetrics doesn't directly provide GPU usage percentage
+            # We'll try to get it via ioreg separately
             cmd = [
                 'powermetrics',
                 '-i', '1000',  # 1 second interval
                 '-n', '1',     # 1 sample
-                '--samplers', 'cpu_power,gpu_power,ane_power,gpu'
+                '--samplers', 'cpu_power,gpu_power,ane_power'
                 # Use default text format - plist parsing is complex
             ]
             
@@ -125,9 +126,13 @@ class AppleAPICollector:
             
             # Parse text output (more reliable than plist)
             parsed = self._parse_powermetrics_text(result.stdout)
+            
+            # Try to get GPU usage via ioreg (separate call)
+            parsed.gpu_usage = self._get_gpu_usage_via_ioreg()
+            
             if self._debug:
                 import sys
-                print(f"[DEBUG] Parsed metrics: CPU={parsed.cpu_power}W, GPU={parsed.gpu_power}W, ANE={parsed.ane_power}W", file=sys.stderr)
+                print(f"[DEBUG] Parsed metrics: CPU={parsed.cpu_power}W, GPU={parsed.gpu_power}W, ANE={parsed.ane_power}W, GPU Usage={parsed.gpu_usage}%", file=sys.stderr)
             return parsed
         
         except subprocess.TimeoutExpired:
