@@ -26,23 +26,39 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Yamon API", version="1.0.0", lifespan=lifespan)
 
 # CORS 配置（开发环境需要）
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Vite dev server
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# 在生产环境中，静态文件和 API 同源，不需要 CORS
+import os
+if os.getenv("ENV") != "production":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["http://localhost:5173"],  # Vite dev server
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # API 路由
 app.include_router(metrics.router, prefix="/api", tags=["metrics"])
 app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 
 # 静态文件服务（生产环境）
-static_dir = Path(__file__).parent / "static"
-if static_dir.exists() and (static_dir / "index.html").exists():
+# 尝试多个可能的静态文件目录路径
+possible_static_dirs = [
+    Path(__file__).parent.parent / "frontend" / "dist",  # 从项目根目录
+    Path(__file__).parent / "static",  # 从 backend 目录
+]
+
+static_dir = None
+for dir_path in possible_static_dirs:
+    if dir_path.exists() and (dir_path / "index.html").exists():
+        static_dir = dir_path
+        break
+
+if static_dir:
     # 如果存在静态文件，serve 它们
-    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="assets")
+    assets_dir = static_dir / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
     
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
@@ -52,15 +68,16 @@ if static_dir.exists() and (static_dir / "index.html").exists():
         
         index_path = static_dir / "index.html"
         if index_path.exists():
-            return FileResponse(index_path)
+            return FileResponse(str(index_path))
         return {"error": "Static files not found"}
 
 @app.get("/")
 async def root():
     """根路径"""
-    index_path = static_dir / "index.html"
-    if index_path.exists():
-        return FileResponse(index_path)
+    if static_dir:
+        index_path = static_dir / "index.html"
+        if index_path.exists():
+            return FileResponse(str(index_path))
     return {"message": "Yamon API", "docs": "/docs"}
 
 if __name__ == "__main__":

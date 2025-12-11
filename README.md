@@ -27,20 +27,35 @@ Unlock metrics that Activity Monitor hides:
 
 ## 📸 Usage
 
-### Quick Start
+### Development Mode (Separate Frontend & Backend)
+
 ```bash
 # 1. Clone & Setup
 git clone https://github.com/grapeot/yamon.git
 cd yamon
 
 # 2. Run Backend (Collects data)
-./scripts/run_backend.sh
+./run_backend.sh
 
 # 3. Run Frontend (Displays data)
-./scripts/run_frontend.sh
+./run_frontend.sh
 ```
 
 Visit **http://localhost:5173** to see your system in action.
+
+### Production Mode (Single Server)
+
+After building the frontend, the backend can serve both API and static files:
+
+```bash
+# 1. Build Frontend
+./build_frontend.sh
+
+# 2. Run Backend (serves both API and frontend)
+./run_backend.sh
+```
+
+Visit **http://localhost:8000** - the backend will serve the frontend automatically.
 
 ## 🏗️ Architecture
 
