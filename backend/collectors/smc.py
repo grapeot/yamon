@@ -1,354 +1,197 @@
 """SMC (System Management Controller) API bindings for macOS
-
-Uses IOKit to access SMC and read system power (PSTR) and other metrics.
-Based on AppleSMC implementation patterns.
+Corrected implementation matching macmon / AppleSMC.h structures.
 """
 
 import ctypes
 import ctypes.util
-from typing import Optional
-import platform
 import struct
+import sys
 
+# --- Structures ---
 
-class SMCKeyData_t(ctypes.Structure):
-    """SMC key data structure"""
+class KeyDataVer(ctypes.Structure):
     _fields_ = [
-        ('key', ctypes.c_uint32),
-        ('dataSize', ctypes.c_uint8),
-        ('dataType', ctypes.c_uint8),
-        ('dataAttributes', ctypes.c_uint8),
-        ('data', ctypes.c_uint8 * 32),
-        ('padding', ctypes.c_uint8 * 2),
+        ("major", ctypes.c_uint8),
+        ("minor", ctypes.c_uint8),
+        ("build", ctypes.c_uint8),
+        ("reserved", ctypes.c_uint8),
+        ("release", ctypes.c_uint16),
     ]
 
-
-class SMCVal(ctypes.Structure):
-    """SMC value structure"""
+class PLimitData(ctypes.Structure):
     _fields_ = [
-        ('key', ctypes.c_char * 5),
-        ('dataSize', ctypes.c_uint32),
-        ('dataType', ctypes.c_char * 5),
-        ('bytes', ctypes.c_uint8 * 32),
+        ("version", ctypes.c_uint16),
+        ("length", ctypes.c_uint16),
+        ("cpu_p_limit", ctypes.c_uint32),
+        ("gpu_p_limit", ctypes.c_uint32),
+        ("mem_p_limit", ctypes.c_uint32),
     ]
 
+class KeyInfo(ctypes.Structure):
+    _fields_ = [
+        ("data_size", ctypes.c_uint32),
+        ("data_type", ctypes.c_uint32),
+        ("data_attributes", ctypes.c_uint8),
+    ]
+
+class KeyData(ctypes.Structure):
+    _fields_ = [
+        ("key", ctypes.c_uint32),
+        ("vers", KeyDataVer),
+        ("p_limit_data", PLimitData),
+        ("key_info", KeyInfo),
+        ("result", ctypes.c_uint8),
+        ("status", ctypes.c_uint8),
+        ("data8", ctypes.c_uint8),
+        ("data32", ctypes.c_uint32),
+        ("bytes", ctypes.c_uint8 * 32),
+    ]
 
 class SMC:
-    """SMC API wrapper using ctypes"""
-    
-    # SMC key codes
-    SMC_KEY_PSTR = b'PSTR'  # System Power (watts)
-    
-    # SMC selectors
     KERNEL_INDEX_SMC = 2
-    SMC_CMD_READ_KEYINFO = 9
     SMC_CMD_READ_BYTES = 5
-    SMC_CMD_READ_INDEX = 8
-    
+    SMC_CMD_READ_KEY_INFO = 9
+
     def __init__(self, debug=False):
         self._debug = debug
-        self._is_macos = platform.system() == 'Darwin'
-        self._io_kit = None
-        self._conn = None
-        
-        if self._is_macos:
-            self._init_iokit()
-    
+        self._conn = 0
+        self._init_iokit()
+
     def _init_iokit(self):
-        """Initialize IOKit framework"""
         try:
             iokit_path = ctypes.util.find_library('IOKit')
-            if not iokit_path:
-                if self._debug:
-                    import sys
-                    print("[DEBUG] IOKit library not found", file=sys.stderr)
-                return
-            
             self._io_kit = ctypes.CDLL(iokit_path)
             
-            # Define function signatures
+            # Signatures
             self._io_kit.IOServiceMatching.argtypes = [ctypes.c_char_p]
             self._io_kit.IOServiceMatching.restype = ctypes.c_void_p
             
-            self._io_kit.IOServiceGetMatchingService.argtypes = [
-                ctypes.c_uint,  # masterPort
-                ctypes.c_void_p,  # matching
-            ]
-            self._io_kit.IOServiceGetMatchingService.restype = ctypes.c_uint
-            
-            self._io_kit.IOServiceOpen.argtypes = [
-                ctypes.c_uint,  # service
-                ctypes.c_uint,  # owningTask
-                ctypes.c_uint,  # type
-                ctypes.POINTER(ctypes.c_uint),  # connect
-            ]
-            self._io_kit.IOServiceOpen.restype = ctypes.c_uint
-            
-            self._io_kit.IOConnectCallStructMethod.argtypes = [
-                ctypes.c_uint,  # connection
-                ctypes.c_uint,  # selector
-                ctypes.c_void_p,  # inputStruct
-                ctypes.c_size_t,  # inputStructSize
-                ctypes.c_void_p,  # outputStruct
-                ctypes.POINTER(ctypes.c_size_t),  # outputStructSize
-            ]
-            self._io_kit.IOConnectCallStructMethod.restype = ctypes.c_uint
-            
-            self._io_kit.IOServiceClose.argtypes = [ctypes.c_uint]
-            self._io_kit.IOServiceClose.restype = ctypes.c_uint
-            
-            # Constants
-            self._kIOMasterPortDefault = 0
-            self._kIOServiceOpen = 0
-            
-            # Open SMC connection
-            self._open_smc()
-            
-        except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to initialize IOKit: {e}", file=sys.stderr)
-            self._io_kit = None
-    
-    def _open_smc(self):
-        """Open connection to AppleSMC service (like macmon does)"""
-        if not self._io_kit:
-            return False
-        
-        try:
-            # Need to add IOServiceGetMatchingServices and IOIteratorNext
-            # First, define missing functions
-            self._io_kit.IOServiceGetMatchingServices.argtypes = [
-                ctypes.c_uint,  # masterPort
-                ctypes.c_void_p,  # matching
-                ctypes.POINTER(ctypes.c_uint),  # iterator
-            ]
+            self._io_kit.IOServiceGetMatchingServices.argtypes = [ctypes.c_uint, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint)]
             self._io_kit.IOServiceGetMatchingServices.restype = ctypes.c_int
             
             self._io_kit.IOIteratorNext.argtypes = [ctypes.c_uint]
             self._io_kit.IOIteratorNext.restype = ctypes.c_uint
             
-            self._io_kit.IORegistryEntryGetName.argtypes = [
-                ctypes.c_uint,  # entry
-                ctypes.POINTER(ctypes.c_char),  # name
+            self._io_kit.IOServiceOpen.argtypes = [ctypes.c_uint, ctypes.c_uint, ctypes.c_uint, ctypes.POINTER(ctypes.c_uint)]
+            self._io_kit.IOServiceOpen.restype = ctypes.c_int
+            
+            self._io_kit.IOServiceClose.argtypes = [ctypes.c_uint]
+            self._io_kit.IOServiceClose.restype = ctypes.c_int
+
+            self._io_kit.IOConnectCallStructMethod.argtypes = [
+                ctypes.c_uint,      # connection
+                ctypes.c_uint,      # selector
+                ctypes.c_void_p,    # inputStructure
+                ctypes.c_size_t,    # inputStructureSize
+                ctypes.c_void_p,    # outputStructure
+                ctypes.POINTER(ctypes.c_size_t) # outputStructureSize
             ]
-            self._io_kit.IORegistryEntryGetName.restype = ctypes.c_int
+            self._io_kit.IOConnectCallStructMethod.restype = ctypes.c_int
             
-            # Get matching dictionary for AppleSMC
-            matching = self._io_kit.IOServiceMatching(b'AppleSMC')
-            if not matching:
-                if self._debug:
-                    import sys
-                    print("[DEBUG] Failed to get AppleSMC matching dictionary", file=sys.stderr)
-                return False
-            
-            # Get iterator for services
-            iterator = ctypes.c_uint()
-            result = self._io_kit.IOServiceGetMatchingServices(
-                self._kIOMasterPortDefault,
-                matching,
-                ctypes.byref(iterator)
-            )
-            
-            if result != 0:
-                if self._debug:
-                    import sys
-                    print(f"[DEBUG] Failed to get AppleSMC services iterator: {result}", file=sys.stderr)
-                return False
-            
-            # Iterate through services to find AppleSMCKeysEndpoint
-            found = False
-            while True:
-                service = self._io_kit.IOIteratorNext(iterator.value)
-                if service == 0:
-                    break
-                
-                # Get service name
-                name_buf = ctypes.create_string_buffer(128)
-                if self._io_kit.IORegistryEntryGetName(service, name_buf) == 0:
-                    name = name_buf.value.decode('utf-8')
-                    if name == "AppleSMCKeysEndpoint":
-                        # Found the right service, open connection
-                        conn = ctypes.c_uint()
-                        # Use mach_task_self() equivalent (0 for current task)
-                        result = self._io_kit.IOServiceOpen(
-                            service,
-                            0,  # mach_task_self() equivalent
-                            0,  # type (0 for AppleSMCKeysEndpoint)
-                            ctypes.byref(conn)
-                        )
-                        
-                        if result == 0:  # KERN_SUCCESS
-                            self._conn = conn.value
-                            found = True
-                            if self._debug:
-                                import sys
-                                print(f"[DEBUG] Successfully opened SMC connection: {self._conn}", file=sys.stderr)
-                        else:
-                            if self._debug:
-                                import sys
-                                error_hex = hex(result)
-                                if result == 0xE00002C2:
-                                    print(f"[DEBUG] SMC IOServiceOpen failed: Not privileged (even with sudo, SMC may require special entitlements), error: {error_hex}", file=sys.stderr)
-                                    print(f"[DEBUG] This is expected - SMC API may not be accessible. System power will show as N/A.", file=sys.stderr)
-                                else:
-                                    print(f"[DEBUG] SMC IOServiceOpen failed, error: {error_hex}", file=sys.stderr)
-                
-                # Release service
-                self._io_kit.IOObjectRelease(service)
-            
-            # Release iterator
-            self._io_kit.IOObjectRelease(iterator.value)
-            
-            return found
-            
-            if result == 0:  # KERN_SUCCESS
-                self._conn = conn.value
-                if self._debug:
-                    import sys
-                    print(f"[DEBUG] Successfully opened SMC connection: {self._conn}", file=sys.stderr)
-                return True
-            else:
-                if self._debug:
-                    import sys
-                    # Common error codes:
-                    # 0xE00002C2 = kIOReturnNotPrivileged (requires root)
-                    # 0xE00002C1 = kIOReturnBadArgument
-                    error_hex = hex(result)
-                    if result == 0xE00002C2:
-                        print(f"[DEBUG] SMC connection failed: Not privileged (requires sudo), error: {error_hex}", file=sys.stderr)
-                    else:
-                        print(f"[DEBUG] Failed to open SMC connection, result: {result} ({error_hex})", file=sys.stderr)
-        
+            self._open_smc()
+
         except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to open SMC: {e}", file=sys.stderr)
-        
-        return False
-    
-    def _str_to_key(self, key_str: str) -> int:
-        """Convert string key to integer"""
-        key_bytes = key_str.encode('ascii')
-        if len(key_bytes) != 4:
-            raise ValueError(f"Key must be 4 characters: {key_str}")
-        return struct.unpack('>I', key_bytes)[0]
-    
-    def read_key(self, key_str: str) -> Optional[float]:
-        """Read a value from SMC by key string (e.g., 'PSTR')"""
-        if not self._conn or not self._io_kit:
-            return None
-        
-        try:
-            # Convert key string to integer
-            key = self._str_to_key(key_str)
+            if self._debug: print(f"Init failed: {e}")
+
+    def _open_smc(self):
+        matching = self._io_kit.IOServiceMatching(b'AppleSMC')
+        iterator = ctypes.c_uint()
+        res = self._io_kit.IOServiceGetMatchingServices(0, matching, ctypes.byref(iterator))
+        if res != 0: return
+
+        while True:
+            service = self._io_kit.IOIteratorNext(iterator)
+            if not service: break
             
-            # Prepare input structure
-            input_data = SMCKeyData_t()
-            input_data.key = key
-            input_data.dataSize = 0
-            input_data.dataType = 0
-            input_data.dataAttributes = 0
+            conn = ctypes.c_uint()
             
-            # Prepare output structure
-            output_data = SMCKeyData_t()
-            output_size = ctypes.c_size_t(ctypes.sizeof(SMCKeyData_t))
-            
-            # Call SMC to read key info first
-            result = self._io_kit.IOConnectCallStructMethod(
-                self._conn,
-                self.SMC_CMD_READ_KEYINFO,
-                ctypes.byref(input_data),
-                ctypes.sizeof(SMCKeyData_t),
-                ctypes.byref(output_data),
-                ctypes.byref(output_size)
-            )
-            
-            if result != 0:
-                if self._debug:
-                    import sys
-                    print(f"[DEBUG] Failed to read key info for {key_str}, result: {result}", file=sys.stderr)
-                return None
-            
-            # Now read the actual data
-            input_data.dataSize = output_data.dataSize
-            input_data.dataType = output_data.dataType
-            
-            result = self._io_kit.IOConnectCallStructMethod(
-                self._conn,
-                self.SMC_CMD_READ_BYTES,
-                ctypes.byref(input_data),
-                ctypes.sizeof(SMCKeyData_t),
-                ctypes.byref(output_data),
-                ctypes.byref(output_size)
-            )
-            
-            if result != 0:
-                if self._debug:
-                    import sys
-                    print(f"[DEBUG] Failed to read bytes for {key_str}, result: {result}", file=sys.stderr)
-                return None
-            
-            # Parse the data based on data type
-            data_bytes = bytes(output_data.data[:output_data.dataSize])
-            
-            # PSTR is typically sp78 format (16-bit fixed point)
-            if output_data.dataType == ord('s') and output_data.dataSize >= 2:
-                # sp78: signed 16-bit fixed point, 7 integer bits, 8 fractional bits
-                value = struct.unpack('>h', data_bytes[:2])[0]
-                return value / 256.0  # Divide by 256 to get float
-            elif output_data.dataSize == 2:
-                # Try as unsigned 16-bit
-                value = struct.unpack('>H', data_bytes[:2])[0]
-                return value / 1000.0  # Convert to watts
-            elif output_data.dataSize == 4:
-                # Try as float or uint32
-                try:
-                    value = struct.unpack('>f', data_bytes[:4])[0]
-                    return value
-                except:
-                    value = struct.unpack('>I', data_bytes[:4])[0]
-                    return value / 1000.0
-            
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Unknown data type for {key_str}: type={output_data.dataType}, size={output_data.dataSize}", file=sys.stderr)
-            
-            return None
-            
-        except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to read SMC key {key_str}: {e}", file=sys.stderr)
-            return None
-    
-    def get_system_power(self) -> Optional[float]:
-        """Get system total power (PSTR) in watts"""
-        if not self._conn:
-            return None
-        
-        try:
-            power = self.read_key('PSTR')
-            if power is not None and power > 0:
-                if self._debug:
-                    import sys
-                    print(f"[DEBUG] Got PSTR from SMC: {power}W", file=sys.stderr)
-                return power
-        except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to get system power: {e}", file=sys.stderr)
-        
-        return None
-    
-    def close(self):
-        """Close SMC connection"""
-        if self._conn and self._io_kit:
+            # Access mach_task_self
+            task_port = 0
             try:
-                self._io_kit.IOServiceClose(self._conn)
-            except Exception:
-                pass
-            self._conn = None
+                libc = ctypes.CDLL(ctypes.util.find_library('c'))
+                task_port = ctypes.c_uint.in_dll(libc, "mach_task_self_").value
+            except:
+                try: task_port = libc.mach_task_self()
+                except: pass
+            
+            res = self._io_kit.IOServiceOpen(service, task_port, 0, ctypes.byref(conn))
+            if res == 0:
+                self._conn = conn.value
+                if self._debug: print("SMC Connected")
+                break
+            self._io_kit.IOObjectRelease(service)
+
+    def call_smc(self, input_data):
+        if not self._conn: return None
+        
+        output_data = KeyData()
+        output_size = ctypes.c_size_t(ctypes.sizeof(KeyData))
+        
+        res = self._io_kit.IOConnectCallStructMethod(
+            self._conn,
+            self.KERNEL_INDEX_SMC,
+            ctypes.byref(input_data),
+            ctypes.sizeof(KeyData),
+            ctypes.byref(output_data),
+            ctypes.byref(output_size)
+        )
+        
+        if res != 0:
+            if self._debug: print(f"SMC Call Failed: {hex(res)}")
+            return None
+        
+        if output_data.result != 0:
+            if self._debug: print(f"SMC Result Error: {output_data.result}")
+            return None
+            
+        return output_data
+
+    def read_key_info(self, key_fourcc):
+        k_int = int.from_bytes(key_fourcc.encode(), 'big')
+        
+        kd = KeyData()
+        kd.key = k_int
+        kd.data8 = self.SMC_CMD_READ_KEY_INFO
+        
+        out = self.call_smc(kd)
+        if out: return out.key_info
+        return None
+
+    def read_key(self, key_str):
+        if len(key_str) != 4: return None
+        
+        info = self.read_key_info(key_str)
+        if not info: return None
+        
+        k_int = int.from_bytes(key_str.encode(), 'big')
+        kd = KeyData()
+        kd.key = k_int
+        kd.key_info = info
+        kd.data8 = self.SMC_CMD_READ_BYTES
+        
+        out = self.call_smc(kd)
+        if not out: return None
+        
+        return bytes(out.bytes)[:info.data_size]
+
+    def get_system_power(self):
+        # Read PSTR
+        val = self.read_key("PSTR")
+        if val:
+            # PSTR is usually 4 bytes float (flt) or 2 bytes fixed point (sp78)
+            # macmon treats it as f32 if 4 bytes? 
+            # macmon: f32::from_le_bytes
+            
+            # Try Little Endian Float first (like macmon)
+            if len(val) == 4:
+                return struct.unpack('<f', val)[0]
+                
+        return None
+
+    def close(self):
+        if self._conn:
+            self._io_kit.IOServiceClose(self._conn)
+            self._conn = 0
     
     def __del__(self):
         self.close()
