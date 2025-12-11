@@ -69,9 +69,9 @@ class MetricsCollector:
         """Collect current system metrics"""
         import time
         
-        # CPU
-        cpu_percent = psutil.cpu_percent(interval=0.1)
-        cpu_per_core = psutil.cpu_percent(interval=0.1, percpu=True)
+        # CPU (use shorter interval for faster updates)
+        cpu_percent = psutil.cpu_percent(interval=0.05)
+        cpu_per_core = psutil.cpu_percent(interval=0.05, percpu=True)
         cpu_count = psutil.cpu_count(logical=True)
         
         # Memory

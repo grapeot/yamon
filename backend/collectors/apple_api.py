@@ -181,8 +181,8 @@ class AppleAPICollector:
             if not self._ioreport:
                 return None
             
-            # Get smoothed power metrics (multiple samples within 1000ms)
-            metrics_dict = self._ioreport.get_power_metrics(total_ms=1000, samples=4)
+            # Get smoothed power metrics (multiple samples within 200ms for faster updates)
+            metrics_dict = self._ioreport.get_power_metrics(total_ms=200, samples=2)
             
             metrics = AppleMetrics()
             metrics.cpu_power = metrics_dict.get('cpu_power', 0.0)
