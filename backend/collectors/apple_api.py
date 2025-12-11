@@ -32,16 +32,32 @@ class AppleMetrics:
 
 
 class AppleAPICollector:
-    """Collect Apple Silicon specific metrics using powermetrics"""
+    """Collect Apple Silicon specific metrics using powermetrics and SMC"""
     
     def __init__(self, debug=False):
         self._is_apple_silicon = self._check_apple_silicon()
         self._powermetrics_available = False
         self._last_sample = None
         self._debug = debug
+        self._smc = None
         
         if self._is_apple_silicon:
             self._check_powermetrics()
+            self._init_smc()
+    
+    def _init_smc(self):
+        """Initialize SMC API for system power"""
+        try:
+            try:
+                from backend.collectors.smc import SMC
+            except ImportError:
+                from collectors.smc import SMC
+            self._smc = SMC(debug=self._debug)
+        except Exception as e:
+            if self._debug:
+                import sys
+                print(f"[DEBUG] Failed to initialize SMC: {e}", file=sys.stderr)
+            self._smc = None
     
     def _check_apple_silicon(self) -> bool:
         """Check if running on Apple Silicon"""
