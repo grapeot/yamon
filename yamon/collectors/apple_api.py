@@ -149,7 +149,7 @@ class AppleAPICollector:
                 if self._powermetrics_available:
                     powermetrics_result = self._collect_via_powermetrics()
                     if powermetrics_result is not None:
-                        # Merge GPU/ANE usage from powermetrics into IOReport result
+                        # Merge GPU/ANE usage and frequencies from powermetrics into IOReport result
                         # Only merge if powermetrics actually got the data (not None)
                         if powermetrics_result.gpu_usage is not None:
                             ioreport_result.gpu_usage = powermetrics_result.gpu_usage
@@ -163,6 +163,17 @@ class AppleAPICollector:
                                 print(f"[DEBUG] Merged ANE usage from powermetrics: {ioreport_result.ane_usage}%", file=sys.stderr)
                         if powermetrics_result.gpu_freq_mhz is not None:
                             ioreport_result.gpu_freq_mhz = powermetrics_result.gpu_freq_mhz
+                        # Merge CPU frequencies from powermetrics
+                        if powermetrics_result.pcpu_freq_mhz is not None:
+                            ioreport_result.pcpu_freq_mhz = powermetrics_result.pcpu_freq_mhz
+                            if self._debug:
+                                import sys
+                                print(f"[DEBUG] Merged P-core frequency from powermetrics: {ioreport_result.pcpu_freq_mhz} MHz", file=sys.stderr)
+                        if powermetrics_result.ecpu_freq_mhz is not None:
+                            ioreport_result.ecpu_freq_mhz = powermetrics_result.ecpu_freq_mhz
+                            if self._debug:
+                                import sys
+                                print(f"[DEBUG] Merged E-core frequency from powermetrics: {ioreport_result.ecpu_freq_mhz} MHz", file=sys.stderr)
                 return ioreport_result
             # If no power data, attempt fallback to powermetrics
             if self._debug:
