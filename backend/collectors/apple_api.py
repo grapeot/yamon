@@ -152,6 +152,15 @@ class AppleAPICollector:
                 if ioreg_usage is not None:
                     parsed.gpu_usage = ioreg_usage
             
+            # Try to get system power via SMC API
+            if parsed.system_power is None and self._smc:
+                smc_power = self._smc.get_system_power()
+                if smc_power is not None:
+                    parsed.system_power = smc_power
+                    if self._debug:
+                        import sys
+                        print(f"[DEBUG] Got system power from SMC: {smc_power}W", file=sys.stderr)
+            
             if self._debug:
                 import sys
                 print(f"[DEBUG] Parsed metrics: CPU={parsed.cpu_power}W, GPU={parsed.gpu_power}W, ANE={parsed.ane_power}W, GPU Usage={parsed.gpu_usage}%", file=sys.stderr)

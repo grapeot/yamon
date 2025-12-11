@@ -8,6 +8,29 @@ import ctypes
 import ctypes.util
 from typing import Optional
 import platform
+import struct
+
+
+class SMCKeyData_t(ctypes.Structure):
+    """SMC key data structure"""
+    _fields_ = [
+        ('key', ctypes.c_uint32),
+        ('dataSize', ctypes.c_uint8),
+        ('dataType', ctypes.c_uint8),
+        ('dataAttributes', ctypes.c_uint8),
+        ('data', ctypes.c_uint8 * 32),
+        ('padding', ctypes.c_uint8 * 2),
+    ]
+
+
+class SMCVal(ctypes.Structure):
+    """SMC value structure"""
+    _fields_ = [
+        ('key', ctypes.c_char * 5),
+        ('dataSize', ctypes.c_uint32),
+        ('dataType', ctypes.c_char * 5),
+        ('bytes', ctypes.c_uint8 * 32),
+    ]
 
 
 class SMC:
@@ -16,12 +39,11 @@ class SMC:
     # SMC key codes
     SMC_KEY_PSTR = b'PSTR'  # System Power (watts)
     
-    # SMC data types
-    SMC_TYPE_FP1E = b'fp1e'  # Float (16-bit)
-    SMC_TYPE_FP4C = b'fp4c'  # Float (32-bit)
-    SMC_TYPE_SP78 = b'sp78'  # Fixed point (16-bit)
-    SMC_TYPE_UINT16 = b'ui16'
-    SMC_TYPE_UINT32 = b'ui32'
+    # SMC selectors
+    KERNEL_INDEX_SMC = 2
+    SMC_CMD_READ_KEYINFO = 9
+    SMC_CMD_READ_BYTES = 5
+    SMC_CMD_READ_INDEX = 8
     
     def __init__(self, debug=False):
         self._debug = debug
@@ -97,6 +119,9 @@ class SMC:
             # Get matching dictionary for AppleSMC
             matching = self._io_kit.IOServiceMatching(b'AppleSMC')
             if not matching:
+                if self._debug:
+                    import sys
+                    print("[DEBUG] Failed to get AppleSMC matching dictionary", file=sys.stderr)
                 return False
             
             # Get the service
@@ -106,6 +131,9 @@ class SMC:
             )
             
             if service == 0:
+                if self._debug:
+                    import sys
+                    print("[DEBUG] Failed to get AppleSMC service", file=sys.stderr)
                 return False
             
             # Open connection
@@ -119,8 +147,22 @@ class SMC:
             
             if result == 0:  # KERN_SUCCESS
                 self._conn = conn.value
+                if self._debug:
+                    import sys
+                    print(f"[DEBUG] Successfully opened SMC connection: {self._conn}", file=sys.stderr)
                 return True
-            
+            else:
+                if self._debug:
+                    import sys
+                    # Common error codes:
+                    # 0xE00002C2 = kIOReturnNotPrivileged (requires root)
+                    # 0xE00002C1 = kIOReturnBadArgument
+                    error_hex = hex(result)
+                    if result == 0xE00002C2:
+                        print(f"[DEBUG] SMC connection failed: Not privileged (requires sudo), error: {error_hex}", file=sys.stderr)
+                    else:
+                        print(f"[DEBUG] Failed to open SMC connection, result: {result} ({error_hex})", file=sys.stderr)
+        
         except Exception as e:
             if self._debug:
                 import sys
@@ -128,59 +170,117 @@ class SMC:
         
         return False
     
-    def read_key(self, key: bytes) -> Optional[float]:
-        """Read a value from SMC by key"""
+    def _str_to_key(self, key_str: str) -> int:
+        """Convert string key to integer"""
+        key_bytes = key_str.encode('ascii')
+        if len(key_bytes) != 4:
+            raise ValueError(f"Key must be 4 characters: {key_str}")
+        return struct.unpack('>I', key_bytes)[0]
+    
+    def read_key(self, key_str: str) -> Optional[float]:
+        """Read a value from SMC by key string (e.g., 'PSTR')"""
         if not self._conn or not self._io_kit:
             return None
         
         try:
-            # SMC key structure (simplified)
-            # This is a simplified implementation
-            # Full implementation would need proper SMC structures
+            # Convert key string to integer
+            key = self._str_to_key(key_str)
             
-            # For now, try using subprocess to call smc command if available
-            # Or use a Python SMC library if installed
+            # Prepare input structure
+            input_data = SMCKeyData_t()
+            input_data.key = key
+            input_data.dataSize = 0
+            input_data.dataType = 0
+            input_data.dataAttributes = 0
+            
+            # Prepare output structure
+            output_data = SMCKeyData_t()
+            output_size = ctypes.c_size_t(ctypes.sizeof(SMCKeyData_t))
+            
+            # Call SMC to read key info first
+            result = self._io_kit.IOConnectCallStructMethod(
+                self._conn,
+                self.SMC_CMD_READ_KEYINFO,
+                ctypes.byref(input_data),
+                ctypes.sizeof(SMCKeyData_t),
+                ctypes.byref(output_data),
+                ctypes.byref(output_size)
+            )
+            
+            if result != 0:
+                if self._debug:
+                    import sys
+                    print(f"[DEBUG] Failed to read key info for {key_str}, result: {result}", file=sys.stderr)
+                return None
+            
+            # Now read the actual data
+            input_data.dataSize = output_data.dataSize
+            input_data.dataType = output_data.dataType
+            
+            result = self._io_kit.IOConnectCallStructMethod(
+                self._conn,
+                self.SMC_CMD_READ_BYTES,
+                ctypes.byref(input_data),
+                ctypes.sizeof(SMCKeyData_t),
+                ctypes.byref(output_data),
+                ctypes.byref(output_size)
+            )
+            
+            if result != 0:
+                if self._debug:
+                    import sys
+                    print(f"[DEBUG] Failed to read bytes for {key_str}, result: {result}", file=sys.stderr)
+                return None
+            
+            # Parse the data based on data type
+            data_bytes = bytes(output_data.data[:output_data.dataSize])
+            
+            # PSTR is typically sp78 format (16-bit fixed point)
+            if output_data.dataType == ord('s') and output_data.dataSize >= 2:
+                # sp78: signed 16-bit fixed point, 7 integer bits, 8 fractional bits
+                value = struct.unpack('>h', data_bytes[:2])[0]
+                return value / 256.0  # Divide by 256 to get float
+            elif output_data.dataSize == 2:
+                # Try as unsigned 16-bit
+                value = struct.unpack('>H', data_bytes[:2])[0]
+                return value / 1000.0  # Convert to watts
+            elif output_data.dataSize == 4:
+                # Try as float or uint32
+                try:
+                    value = struct.unpack('>f', data_bytes[:4])[0]
+                    return value
+                except:
+                    value = struct.unpack('>I', data_bytes[:4])[0]
+                    return value / 1000.0
+            
+            if self._debug:
+                import sys
+                print(f"[DEBUG] Unknown data type for {key_str}: type={output_data.dataType}, size={output_data.dataSize}", file=sys.stderr)
+            
             return None
             
         except Exception as e:
             if self._debug:
                 import sys
-                print(f"[DEBUG] Failed to read SMC key {key}: {e}", file=sys.stderr)
+                print(f"[DEBUG] Failed to read SMC key {key_str}: {e}", file=sys.stderr)
             return None
     
     def get_system_power(self) -> Optional[float]:
         """Get system total power (PSTR) in watts"""
-        # Try using subprocess to call smc command-line tool if available
-        # Or use py-smc2 library if installed
+        if not self._conn:
+            return None
+        
         try:
-            # Try py-smc2 if available
-            try:
-                import smc
-                pstr = smc.read_key('PSTR')
-                if pstr:
-                    # PSTR is typically in fixed-point format
-                    # Convert based on data type
-                    return float(pstr) / 1000.0  # Convert to watts if needed
-            except ImportError:
-                pass
-            
-            # Try smc command-line tool
-            import subprocess
-            result = subprocess.run(
-                ['smc', '-k', 'PSTR', '-r'],
-                capture_output=True,
-                timeout=2,
-                text=True
-            )
-            if result.returncode == 0 and result.stdout:
-                # Parse output (format may vary)
-                value = float(result.stdout.strip())
-                return value / 1000.0  # Convert to watts if needed
-            
-        except (FileNotFoundError, ValueError, subprocess.TimeoutExpired) as e:
+            power = self.read_key('PSTR')
+            if power is not None and power > 0:
+                if self._debug:
+                    import sys
+                    print(f"[DEBUG] Got PSTR from SMC: {power}W", file=sys.stderr)
+                return power
+        except Exception as e:
             if self._debug:
                 import sys
-                print(f"[DEBUG] SMC read failed: {e}", file=sys.stderr)
+                print(f"[DEBUG] Failed to get system power: {e}", file=sys.stderr)
         
         return None
     
@@ -195,4 +295,3 @@ class SMC:
     
     def __del__(self):
         self.close()
-
