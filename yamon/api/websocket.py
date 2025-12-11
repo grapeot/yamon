@@ -94,56 +94,61 @@ async def websocket_metrics(websocket: WebSocket):
             p_cores = cpu_per_core[:p_core_count] if len(cpu_per_core) >= p_core_count else []
             e_cores = cpu_per_core[p_core_count:] if len(cpu_per_core) > p_core_count else []
             
-            # 计算 P 核和 E 核对总CPU使用率的贡献百分比
-            # cpu_percent 是所有核心的平均使用率，即 sum(cpu_per_core) / cpu_count
-            # 所以 P核贡献 = sum(p_cores) / cpu_count
-            # E核贡献 = sum(e_cores) / cpu_count
-            # P核贡献 + E核贡献 = cpu_percent
-            if cpu_count > 0:
-                cpu_p_percent = (sum(p_cores) / cpu_count) if p_cores else 0.0
-                cpu_e_percent = (sum(e_cores) / cpu_count) if e_cores else 0.0
-            else:
-                cpu_p_percent = 0.0
-                cpu_e_percent = 0.0
+            # 计算 P 核和 E 核的平均使用率（每个核心的使用率百分比）
+            p_core_avg_usage = (sum(p_cores) / p_core_count) if p_cores and p_core_count > 0 else 0.0
+            e_core_avg_usage = (sum(e_cores) / e_core_count) if e_cores and e_core_count > 0 else 0.0
             
-            # 确保 cpu_percent = cpu_p_percent + cpu_e_percent（修复浮点数精度问题）
-            cpu_percent_calculated = cpu_p_percent + cpu_e_percent
+            # 计算 P 核和 E 核的算力占整个CPU最高算力的比例
+            # P核总算力 = P核数量 × P核当前频率 × P核平均使用率
+            # E核总算力 = E核数量 × E核当前频率 × E核平均使用率
+            # CPU最高算力 = P核数量 × P核最大频率 + E核数量 × E核最大频率
+            # cpu_p_percent = (P核总算力) / (CPU最高算力) × 100%
+            # cpu_e_percent = (E核总算力) / (CPU最高算力) × 100%
             
-            # 根据频率修正 CPU usage（类似 GPU 的方式）
-            # 需要最大频率来计算 scaled usage
             # 对于 Apple Silicon，P-core 最大频率通常在 3000-4000 MHz，E-core 在 2000-2500 MHz
             pcpu_max_freq_mhz = 4000.0  # 默认最大 P-core 频率
             ecpu_max_freq_mhz = 2500.0  # 默认最大 E-core 频率
             
-            # 如果知道实际频率，使用实际频率；否则使用默认值
+            # 如果知道实际频率，使用实际频率估算最大值；否则使用默认值
             if metrics.pcpu_freq_mhz is not None:
                 # 如果当前频率接近最大值，使用当前频率作为参考
                 pcpu_max_freq_mhz = max(metrics.pcpu_freq_mhz * 1.2, 3000.0)
             if metrics.ecpu_freq_mhz is not None:
                 ecpu_max_freq_mhz = max(metrics.ecpu_freq_mhz * 1.2, 2000.0)
             
-            # 计算 scaled usage: (freq × usage) / max_freq
-            pcpu_scaled = 0.0
-            ecpu_scaled = 0.0
-            if metrics.pcpu_freq_mhz is not None and pcpu_max_freq_mhz > 0:
-                pcpu_scaled = (metrics.pcpu_freq_mhz * cpu_p_percent / 100.0) / pcpu_max_freq_mhz * 100.0
-            else:
-                pcpu_scaled = cpu_p_percent
+            # 计算 CPU 最高算力（所有核心都在最大频率下的总算力）
+            cpu_max_performance = (p_core_count * pcpu_max_freq_mhz) + (e_core_count * ecpu_max_freq_mhz)
             
-            if metrics.ecpu_freq_mhz is not None and ecpu_max_freq_mhz > 0:
-                ecpu_scaled = (metrics.ecpu_freq_mhz * cpu_e_percent / 100.0) / ecpu_max_freq_mhz * 100.0
-            else:
-                ecpu_scaled = cpu_e_percent
+            # 计算 P 核和 E 核的当前算力
+            pcpu_current_performance = 0.0
+            ecpu_current_performance = 0.0
             
-            cpu_percent_scaled = pcpu_scaled + ecpu_scaled
+            if metrics.pcpu_freq_mhz is not None and cpu_max_performance > 0:
+                # P核总算力 = P核数量 × P核当前频率 × (P核平均使用率 / 100)
+                pcpu_current_performance = p_core_count * metrics.pcpu_freq_mhz * (p_core_avg_usage / 100.0)
+                cpu_p_percent = (pcpu_current_performance / cpu_max_performance) * 100.0
+            else:
+                # 如果没有频率信息，回退到简单的使用率比例
+                cpu_p_percent = (p_core_count * p_core_avg_usage) / cpu_count * 100.0 if cpu_count > 0 else 0.0
+            
+            if metrics.ecpu_freq_mhz is not None and cpu_max_performance > 0:
+                # E核总算力 = E核数量 × E核当前频率 × (E核平均使用率 / 100)
+                ecpu_current_performance = e_core_count * metrics.ecpu_freq_mhz * (e_core_avg_usage / 100.0)
+                cpu_e_percent = (ecpu_current_performance / cpu_max_performance) * 100.0
+            else:
+                # 如果没有频率信息，回退到简单的使用率比例
+                cpu_e_percent = (e_core_count * e_core_avg_usage) / cpu_count * 100.0 if cpu_count > 0 else 0.0
+            
+            # cpu_percent 应该是 P 核和 E 核算力占最高算力的比例之和
+            cpu_percent_scaled = cpu_p_percent + cpu_e_percent
             
             # 发送数据
             await websocket.send_json({
-                "cpu_percent": cpu_percent_scaled,  # 使用频率修正后的值
+                "cpu_percent": cpu_percent_scaled,  # P核和E核算力占最高算力的比例之和
                 "cpu_per_core": metrics.cpu_per_core,
                 "cpu_count": metrics.cpu_count,
-                "cpu_p_percent": pcpu_scaled,  # P-core scaled usage
-                "cpu_e_percent": ecpu_scaled,  # E-core scaled usage
+                "cpu_p_percent": cpu_p_percent,  # P核算力占整个CPU最高算力的比例
+                "cpu_e_percent": cpu_e_percent,  # E核算力占整个CPU最高算力的比例
                 "pcpu_freq_mhz": metrics.pcpu_freq_mhz,
                 "ecpu_freq_mhz": metrics.ecpu_freq_mhz,
                 "memory_percent": metrics.memory_percent,
