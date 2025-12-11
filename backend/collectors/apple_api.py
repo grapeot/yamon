@@ -24,11 +24,11 @@ class AppleMetrics:
     system_power: float = 0.0
     
     # GPU
-    gpu_usage: float = 0.0  # percentage
-    gpu_freq_mhz: float = 0.0
+    gpu_usage: Optional[float] = None  # percentage, None if not available
+    gpu_freq_mhz: Optional[float] = None  # MHz, None if not available
     
     # ANE
-    ane_usage: float = 0.0  # percentage if available
+    ane_usage: Optional[float] = None  # percentage if available
 
 
 class AppleAPICollector:
@@ -82,12 +82,13 @@ class AppleAPICollector:
         """Collect metrics using powermetrics command"""
         try:
             # Run powermetrics with a short sample interval
-            # Format: powermetrics -i 1000 -n 1 --samplers cpu_power,gpu_power,ane_power
+            # Format: powermetrics -i 1000 -n 1 --samplers cpu_power,gpu_power,ane_power,gpu
+            # Note: 'gpu' sampler provides GPU usage and frequency
             cmd = [
                 'powermetrics',
                 '-i', '1000',  # 1 second interval
                 '-n', '1',     # 1 sample
-                '--samplers', 'cpu_power,gpu_power,ane_power'
+                '--samplers', 'cpu_power,gpu_power,ane_power,gpu'
                 # Use default text format - plist parsing is complex
             ]
             
@@ -178,12 +179,20 @@ class AppleAPICollector:
                         break
                 
                 # GPU usage and frequency
-                if 'gpu_usage' in gpu:
-                    metrics.gpu_usage = float(gpu['gpu_usage'])
+                if 'gpu_usage' in gpu or 'utilization' in gpu:
+                    usage = gpu.get('gpu_usage') or gpu.get('utilization')
+                    if usage is not None:
+                        try:
+                            metrics.gpu_usage = float(usage)
+                        except (ValueError, TypeError):
+                            pass
                 if 'gpu_freq' in gpu or 'frequency' in gpu:
                     freq = gpu.get('gpu_freq') or gpu.get('frequency')
-                    if freq:
-                        metrics.gpu_freq_mhz = float(freq)
+                    if freq is not None:
+                        try:
+                            metrics.gpu_freq_mhz = float(freq)
+                        except (ValueError, TypeError):
+                            pass
             
             # ANE Power
             if 'ane' in data:
@@ -199,8 +208,13 @@ class AppleAPICollector:
                                 metrics.ane_power = float(match.group(1))
                         break
                 
-                if 'ane_usage' in ane:
-                    metrics.ane_usage = float(ane['ane_usage'])
+                if 'ane_usage' in ane or 'utilization' in ane:
+                    usage = ane.get('ane_usage') or ane.get('utilization')
+                    if usage is not None:
+                        try:
+                            metrics.ane_usage = float(usage)
+                        except (ValueError, TypeError):
+                            pass
             
             # System power (total)
             if 'system_power' in data:
@@ -332,6 +346,44 @@ class AppleAPICollector:
                 metrics.gpu_freq_mhz = float(gpu_freq_match.group(1))
             except (ValueError, IndexError):
                 pass
+        
+        # Try to extract GPU usage (percentage)
+        # powermetrics may output GPU usage in various formats:
+        # "GPU Utilization: 45.2%"
+        # "GPU Usage: 45.2%"
+        # "GPU: 45.2%"
+        gpu_usage_patterns = [
+            r'GPU.*?Utilization[:\s]+([\d.]+)\s*%',
+            r'GPU.*?Usage[:\s]+([\d.]+)\s*%',
+            r'GPU[:\s]+([\d.]+)\s*%',
+            r'gpu_utilization[:\s]+([\d.]+)',
+            r'gpu_usage[:\s]+([\d.]+)',
+        ]
+        for pattern in gpu_usage_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+            if match:
+                try:
+                    metrics.gpu_usage = float(match.group(1))
+                    break
+                except (ValueError, IndexError):
+                    continue
+        
+        # Try to extract ANE usage if available
+        ane_usage_patterns = [
+            r'ANE.*?Utilization[:\s]+([\d.]+)\s*%',
+            r'ANE.*?Usage[:\s]+([\d.]+)\s*%',
+            r'Neural Engine.*?Usage[:\s]+([\d.]+)\s*%',
+            r'ane_utilization[:\s]+([\d.]+)',
+            r'ane_usage[:\s]+([\d.]+)',
+        ]
+        for pattern in ane_usage_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+            if match:
+                try:
+                    metrics.ane_usage = float(match.group(1))
+                    break
+                except (ValueError, IndexError):
+                    continue
         
         return metrics
     
