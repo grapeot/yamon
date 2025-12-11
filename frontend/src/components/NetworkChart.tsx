@@ -47,10 +47,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
 
     chartInstance.current.setOption({
       title: {
-        text: `Network: ↑ ${formatBytes(sentRate)} ↓ ${formatBytes(recvRate)}`,
-        left: 'center',
-        top: 10,
-        textStyle: { fontSize: 18, color: '#fff' },
+        show: false, // Hide ECharts title, we'll use HTML text instead for selectability
       },
       tooltip: {
         trigger: 'axis',
@@ -151,8 +148,32 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
     })
   }, [sentRate, recvRate, sentHistory, recvHistory])
 
+  const formatBytes = (bytes: number): string => {
+    const units = ['B', 'KB', 'MB', 'GB']
+    let size = bytes
+    let unitIndex = 0
+    while (size >= 1024 && unitIndex < units.length - 1) {
+      size /= 1024
+      unitIndex++
+    }
+    return `${size.toFixed(1)} ${units[unitIndex]}/s`
+  }
+
+  const titleText = `Network: ↑ ${formatBytes(sentRate)} ↓ ${formatBytes(recvRate)}`
+
   return (
     <div className="chart-container">
+      <div style={{ 
+        textAlign: 'center', 
+        fontSize: '18px', 
+        color: '#fff', 
+        marginBottom: '10px',
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        cursor: 'text'
+      }}>
+        {titleText}
+      </div>
       <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )

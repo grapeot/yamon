@@ -32,16 +32,9 @@ export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
 
     const updatedHistory = [...history, gpuUsage || 0].slice(-120)
 
-    const titleText = gpuFreqMhz !== null
-      ? `GPU Usage: ${(gpuUsage || 0).toFixed(1)}% (${gpuFreqMhz.toFixed(0)} MHz)`
-      : `GPU Usage: ${(gpuUsage || 0).toFixed(1)}%`
-
     chartInstance.current.setOption({
       title: {
-        text: titleText,
-        left: 'center',
-        top: 10,
-        textStyle: { fontSize: 18, color: '#fff' },
+        show: false, // Hide ECharts title, we'll use HTML text instead for selectability
       },
       tooltip: {
         trigger: 'axis',
@@ -96,8 +89,23 @@ export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
     })
   }, [gpuUsage, gpuFreqMhz, history])
 
+  const titleText = gpuFreqMhz !== null
+    ? `GPU Usage: ${(gpuUsage || 0).toFixed(1)}% (${gpuFreqMhz.toFixed(0)} MHz)`
+    : `GPU Usage: ${(gpuUsage || 0).toFixed(1)}%`
+
   return (
     <div className="chart-container">
+      <div style={{ 
+        textAlign: 'center', 
+        fontSize: '18px', 
+        color: '#fff', 
+        marginBottom: '10px',
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        cursor: 'text'
+      }}>
+        {titleText}
+      </div>
       <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )

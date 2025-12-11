@@ -33,10 +33,7 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
 
     chartInstance.current.setOption({
       title: {
-        text: `ANE Usage: ${(aneUsage || 0).toFixed(1)}%`,
-        left: 'center',
-        top: 10,
-        textStyle: { fontSize: 18, color: '#fff' },
+        show: false, // Hide ECharts title, we'll use HTML text instead for selectability
       },
       tooltip: {
         trigger: 'axis',
@@ -93,6 +90,17 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
 
   return (
     <div className="chart-container">
+      <div style={{ 
+        textAlign: 'center', 
+        fontSize: '18px', 
+        color: '#fff', 
+        marginBottom: '10px',
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        cursor: 'text'
+      }}>
+        ANE Usage: {(aneUsage || 0).toFixed(1)}%
+      </div>
       <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )

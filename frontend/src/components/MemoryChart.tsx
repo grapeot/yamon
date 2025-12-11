@@ -35,10 +35,7 @@ export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChart
 
     chartInstance.current.setOption({
       title: {
-        text: `Memory Usage: ${memoryPercent.toFixed(1)}%`,
-        left: 'center',
-        top: 10,
-        textStyle: { fontSize: 18, color: '#fff' },
+        show: false, // Hide ECharts title, we'll use HTML text instead for selectability
       },
       tooltip: {
         trigger: 'axis',
@@ -101,6 +98,17 @@ export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChart
 
   return (
     <div className="chart-container">
+      <div style={{ 
+        textAlign: 'center', 
+        fontSize: '18px', 
+        color: '#fff', 
+        marginBottom: '10px',
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        cursor: 'text'
+      }}>
+        Memory Usage: {memoryPercent.toFixed(1)}%
+      </div>
       <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )

@@ -87,11 +87,9 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcp
 
     chartInstance.current.setOption({
       title: {
-        text: titleText,
-        left: 'center',
-        top: 10,
-        textStyle: { fontSize: 18, color: '#fff' },
+        show: false, // Hide ECharts title, we'll use HTML text instead for selectability
       },
+      backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
         formatter: (params: any) => {
@@ -183,8 +181,37 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcp
     })
   }, [cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcpuFreqMhz, ecpuFreqMhz, cpuPHistory, cpuEHistory, cpuCount])
 
+  // Build title text for display
+  // Ensure cpu_percent equals cpu_p_percent + cpu_e_percent (use calculated sum if they don't match)
+  const calculatedTotal = cpuPPercent + cpuEPercent
+  const displayTotal = Math.abs(cpuPercent - calculatedTotal) < 0.1 ? cpuPercent : calculatedTotal
+  let titleText = `CPU Usage: ${displayTotal.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`
+  if ((pcpuFreqMhz !== null && pcpuFreqMhz !== undefined) || (ecpuFreqMhz !== null && ecpuFreqMhz !== undefined)) {
+    const freqParts: string[] = []
+    if (pcpuFreqMhz !== null && pcpuFreqMhz !== undefined) {
+      freqParts.push(`P: ${pcpuFreqMhz.toFixed(0)} MHz`)
+    }
+    if (ecpuFreqMhz !== null && ecpuFreqMhz !== undefined) {
+      freqParts.push(`E: ${ecpuFreqMhz.toFixed(0)} MHz`)
+    }
+    if (freqParts.length > 0) {
+      titleText += ` [${freqParts.join(', ')}]`
+    }
+  }
+
   return (
     <div className="chart-container">
+      <div style={{ 
+        textAlign: 'center', 
+        fontSize: '18px', 
+        color: '#fff', 
+        marginBottom: '10px',
+        userSelect: 'text',
+        WebkitUserSelect: 'text',
+        cursor: 'text'
+      }}>
+        {titleText}
+      </div>
       <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )
