@@ -90,7 +90,7 @@ class AppleAPICollector:
                 'powermetrics',
                 '-i', '1000',  # 1 second interval
                 '-n', '1',     # 1 sample
-                '--samplers', 'cpu_power,gpu_power,ane_power,smc',  # Add SMC sampler for system power (PSTR)
+                '--samplers', 'cpu_power,gpu_power,ane_power',  # Note: SMC sampler doesn't exist, system power needs SMC API
                 '--show-process-gpu',  # Show per-process GPU time (may help calculate usage)
                 '--show-extra-power-info'  # Show additional power info (may include system total)
                 # Use default text format - plist parsing is complex
