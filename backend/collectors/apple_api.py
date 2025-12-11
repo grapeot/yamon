@@ -129,8 +129,11 @@ class AppleAPICollector:
             # Parse text output (more reliable than plist)
             parsed = self._parse_powermetrics_text(result.stdout)
             
-            # Try to get GPU usage via ioreg (separate call)
-            parsed.gpu_usage = self._get_gpu_usage_via_ioreg()
+            # Try to get GPU usage via ioreg only if powermetrics didn't find it
+            if parsed.gpu_usage is None:
+                ioreg_usage = self._get_gpu_usage_via_ioreg()
+                if ioreg_usage is not None:
+                    parsed.gpu_usage = ioreg_usage
             
             if self._debug:
                 import sys
