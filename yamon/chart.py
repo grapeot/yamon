@@ -29,10 +29,13 @@ class ChartRenderer:
         self.use_unicode = use_unicode
     
     def render(self, values: List[float], min_value: Optional[float] = None, 
-               max_value: Optional[float] = None) -> str:
+               max_value: Optional[float] = None, show_y_axis: bool = True) -> str:
         """Render a chart from a list of values"""
         if not values:
-            return ' ' * self.width
+            empty_chart = ' ' * self.width
+            if show_y_axis:
+                return f"{max_value or 0:.1f}\n" + '\n'.join([empty_chart] * self.height) + f"\n{min_value or 0:.1f}"
+            return empty_chart
         
         # Normalize values to chart height
         if min_value is None:
@@ -51,17 +54,21 @@ class ChartRenderer:
             normalized = (value - min_value) / value_range
             scaled.append(int(normalized * self.height))
         
+        # Get latest values (rightmost = newest)
+        latest_scaled = scaled[-self.width:] if len(scaled) > self.width else scaled
+        # Pad with spaces on the left if we have fewer values than width
+        if len(latest_scaled) < self.width:
+            padding = [' '] * (self.width - len(latest_scaled))
+            latest_scaled = padding + latest_scaled
+        
         # Render chart (right to left, newest on right)
         chart_lines = []
         for row in range(self.height):
             line = []
             for col in range(self.width):
-                # Map column to data index (rightmost = newest)
-                data_idx = len(scaled) - self.width + col
-                if data_idx < 0:
-                    line.append(' ')
-                elif data_idx < len(scaled):
-                    bar_height = scaled[data_idx]
+                data_idx = col  # Now we're using latest_scaled which is already aligned
+                if data_idx < len(latest_scaled):
+                    bar_height = latest_scaled[data_idx] if isinstance(latest_scaled[data_idx], int) else 0
                     # Invert row (0 is top, height-1 is bottom)
                     if row >= (self.height - bar_height):
                         line.append(self._get_block_char(bar_height, row))
@@ -71,7 +78,28 @@ class ChartRenderer:
                     line.append(' ')
             chart_lines.append(''.join(line))
         
-        return '\n'.join(chart_lines)
+        chart_text = '\n'.join(chart_lines)
+        
+        # Add Y-axis labels
+        if show_y_axis:
+            # Format max and min values
+            max_str = f"{max_value:.1f}"
+            min_str = f"{min_value:.1f}"
+            # Pad to same width
+            max_width = max(len(max_str), len(min_str))
+            max_str = max_str.rjust(max_width)
+            min_str = min_str.rjust(max_width)
+            
+            # Add labels to each line
+            lines_with_labels = []
+            lines_with_labels.append(f"{max_str} │")
+            for i, line in enumerate(chart_lines):
+                lines_with_labels.append(f"{' ' * max_width} │{line}")
+            lines_with_labels.append(f"{min_str} │")
+            
+            return '\n'.join(lines_with_labels)
+        
+        return chart_text
     
     def _get_block_char(self, bar_height: int, current_row: int) -> str:
         """Get appropriate block character for bar height"""

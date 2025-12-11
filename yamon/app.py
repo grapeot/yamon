@@ -215,22 +215,32 @@ class YamonApp(App):
         else:
             ane_power_label.update("ANE Power: N/A")
         
-        # System Power - update label with value
+        # System Power - update label with all power values
         system_power_label = self.query_one("#system-power-label", Static)
+        power_parts = []
+        if metrics.cpu_power is not None:
+            power_parts.append(f"CPU: {metrics.cpu_power:.2f}W")
+        if metrics.gpu_power is not None:
+            power_parts.append(f"GPU: {metrics.gpu_power:.2f}W")
+        if metrics.ane_power is not None:
+            power_parts.append(f"ANE: {metrics.ane_power:.2f}W")
         if metrics.system_power is not None:
-            system_power_label.update(f"System Power: {metrics.system_power:.2f} W")
+            power_parts.append(f"System: {metrics.system_power:.2f}W")
+        
+        if power_parts:
+            system_power_label.update(f"Power: {', '.join(power_parts)}")
         else:
-            system_power_label.update("System Power: N/A")
+            system_power_label.update("Power: N/A")
         
         # Update charts
         self._update_charts()
     
     def _update_charts(self) -> None:
         """Update history charts"""
-        # CPU Usage Chart - use full height chart
+        # CPU Usage Chart - use full height chart with Y-axis
         cpu_values = self.history.cpu_percent.get_values()
         if cpu_values:
-            cpu_chart = self.chart_renderer.render(cpu_values, min_value=0, max_value=100)
+            cpu_chart = self.chart_renderer.render(cpu_values, min_value=0, max_value=100, show_y_axis=True)
             try:
                 cpu_chart_widget = self.query_one("#cpu-chart", Static)
                 cpu_chart_widget.update(cpu_chart)
@@ -238,65 +248,65 @@ class YamonApp(App):
                 # Widget might not exist yet
                 pass
         
-        # Memory Usage Chart - use full height chart
+        # Memory Usage Chart - use full height chart with Y-axis
         memory_values = self.history.memory_percent.get_values()
         if memory_values:
-            memory_chart = self.chart_renderer.render(memory_values, min_value=0, max_value=100)
+            memory_chart = self.chart_renderer.render(memory_values, min_value=0, max_value=100, show_y_axis=True)
             try:
                 memory_chart_widget = self.query_one("#memory-chart", Static)
                 memory_chart_widget.update(memory_chart)
             except Exception:
                 pass
         
-        # Network Chart (combine upload and download)
+        # Network Chart - split chart (upload top, download bottom)
         sent_values = self.history.network_sent_rate.get_values()
         recv_values = self.history.network_recv_rate.get_values()
         if sent_values or recv_values:
-            # Normalize network values for display (convert to MB/s)
-            sent_mb = [v / (1024 * 1024) for v in sent_values] if sent_values else []
-            recv_mb = [v / (1024 * 1024) for v in recv_values] if recv_values else []
-            
-            # Combine into a single chart showing both
-            max_len = max(len(sent_mb), len(recv_mb))
-            combined = []
-            for i in range(max_len):
-                sent_val = sent_mb[i] if i < len(sent_mb) else 0
-                recv_val = recv_mb[i] if i < len(recv_mb) else 0
-                combined.append(max(sent_val, recv_val))  # Show the higher value
-            
-            if combined:
-                # Find max value for scaling
-                max_val = max(combined) if combined else 1
-                network_chart = self.chart_renderer.render(combined, min_value=0, max_value=max(1, max_val * 1.1))
-                try:
-                    network_chart_widget = self.query_one("#network-chart", Static)
-                    network_chart_widget.update(network_chart)
-                except Exception:
-                    pass
+            network_chart = self.chart_renderer.render_network_split(sent_values, recv_values, show_y_axis=True)
+            try:
+                network_chart_widget = self.query_one("#network-chart", Static)
+                network_chart_widget.update(network_chart)
+            except Exception:
+                pass
         
-        # Power Chart (combine CPU, GPU, ANE)
+        # Power Chart - try stacked chart, fallback to combined
         cpu_power_values = self.history.cpu_power.get_values()
         gpu_power_values = self.history.gpu_power.get_values()
         ane_power_values = self.history.ane_power.get_values()
         
         if cpu_power_values or gpu_power_values or ane_power_values:
-            # Combine power values (sum or max)
+            # Try stacked chart
             max_len = max(
                 len(cpu_power_values) if cpu_power_values else 0,
                 len(gpu_power_values) if gpu_power_values else 0,
                 len(ane_power_values) if ane_power_values else 0
             )
-            combined_power = []
-            for i in range(max_len):
-                cpu_val = cpu_power_values[i] if i < len(cpu_power_values) else 0
-                gpu_val = gpu_power_values[i] if i < len(gpu_power_values) else 0
-                ane_val = ane_power_values[i] if i < len(ane_power_values) else 0
-                combined_power.append(cpu_val + gpu_val + ane_val)  # Sum of all power
             
-            if combined_power:
-                # Find max value for scaling
+            if max_len > 0:
+                # Calculate max for scaling
+                combined_power = []
+                for i in range(max_len):
+                    cpu_val = cpu_power_values[i] if i < len(cpu_power_values) else 0
+                    gpu_val = gpu_power_values[i] if i < len(gpu_power_values) else 0
+                    ane_val = ane_power_values[i] if i < len(ane_power_values) else 0
+                    combined_power.append(cpu_val + gpu_val + ane_val)
+                
                 max_power = max(combined_power) if combined_power else 1
-                power_chart = self.chart_renderer.render(combined_power, min_value=0, max_value=max(1, max_power * 1.1))
+                
+                # Try stacked chart (CPU bottom, GPU middle, ANE top)
+                try:
+                    power_chart = self.chart_renderer.render_stacked(
+                        cpu_power_values if cpu_power_values else [],
+                        gpu_power_values if gpu_power_values else [],
+                        ane_power_values if ane_power_values else [],
+                        min_value=0,
+                        max_value=max(1, max_power * 1.1),
+                        show_y_axis=True
+                    )
+                except Exception:
+                    # Fallback to simple combined chart
+                    power_chart = self.chart_renderer.render(combined_power, min_value=0, max_value=max(1, max_power * 1.1), show_y_axis=True)
+                
                 try:
                     power_chart_widget = self.query_one("#power-chart", Static)
                     power_chart_widget.update(power_chart)
