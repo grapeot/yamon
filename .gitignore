@@ -42,3 +42,11 @@ Thumbs.db
 *.db
 *.sqlite
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Backend static files (generated)
+backend/static/
+

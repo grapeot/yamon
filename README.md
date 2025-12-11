@@ -1,51 +1,107 @@
-# yamon
+# Yamon - Mac System Monitor
 
-Mac 系统监控 TUI 工具 - 实时显示 CPU、内存、网络、GPU、ANE 和功耗等系统指标
+A modern system monitoring tool for macOS, built with FastAPI backend and React frontend.
 
-## 安装
+## Features
 
+- **Real-time monitoring**: CPU, Memory, Network, GPU, ANE (Apple Neural Engine), and Power metrics
+- **Historical charts**: Visualize system metrics over time
+- **Web-based UI**: Modern, responsive web interface
+- **Apple Silicon support**: Deep integration with Apple Silicon hardware metrics
+
+## Project Structure
+
+```
+yamon/
+├── backend/              # FastAPI backend
+│   ├── api/              # API endpoints
+│   ├── collectors/       # Data collection logic
+│   ├── main.py           # FastAPI application
+│   └── static/           # Static files (generated)
+├── frontend/             # React + Vite frontend
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   └── ...
+│   └── ...
+└── scripts/              # Build and deployment scripts
+```
+
+## Development Setup
+
+### Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- macOS (for Apple Silicon metrics)
+
+### Backend Setup
+
+1. Create virtual environment:
 ```bash
-# 使用 uv（推荐）
-uv pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
 
-# 或使用 pip
+2. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
 
-## 运行
-
+3. Start backend server:
 ```bash
-python -m yamon
+cd backend
+python -m uvicorn main:app --reload --port 8000
 ```
 
-## 功能
+The API will be available at:
+- API: http://localhost:8000/api/metrics
+- WebSocket: ws://localhost:8000/ws/metrics
+- API Docs: http://localhost:8000/docs
 
-### 基础监控（无需特殊权限）
-- CPU 占用率（每核心）
-- 内存使用情况
-- 网络流量（上行/下行）
-- 实时更新（1秒刷新）
+### Frontend Setup
 
-### Apple Silicon 监控（需要 sudo）
-- GPU 占用率
-- GPU 频率
-- ANE (Apple Neural Engine) 占用率
-- CPU 功耗
-- GPU 功耗
-- ANE 功耗
-- DRAM 功耗
-- 系统总功耗
+1. Install dependencies:
+```bash
+cd frontend
+npm install
+```
 
-**注意**：GPU、ANE 和功耗监控需要使用 `powermetrics` 命令，该命令需要 sudo 权限。如果未提供 sudo 权限，这些指标将显示为 "N/A"。
+2. Start development server:
+```bash
+npm run dev
+```
 
-## 快捷键
+The frontend will be available at http://localhost:5173
 
-- `q` - 退出程序
-- `r` - 手动刷新
+## Production Build
 
-## 技术实现
+1. Build frontend:
+```bash
+cd frontend
+npm run build
+```
 
-- **基础监控**：使用 `psutil` 库获取 CPU、内存、网络指标
-- **Apple Silicon 监控**：使用 `powermetrics` 命令获取 GPU、ANE 和功耗数据
-  - 未来计划：实现无需 sudo 的原生 IOReport API 绑定
+2. Copy static files to backend:
+```bash
+./scripts/build.sh
+```
 
+3. Start production server:
+```bash
+cd backend
+python -m uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+The application will be available at http://localhost:8000
+
+## Apple Silicon Metrics
+
+For GPU, ANE, and power metrics, you may need to run with `sudo`:
+
+```bash
+sudo python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+## License
+
+MIT
