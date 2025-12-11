@@ -21,7 +21,7 @@ class AppleMetrics:
     gpu_power: float = 0.0
     ane_power: float = 0.0
     dram_power: float = 0.0
-    system_power: float = 0.0
+    system_power: Optional[float] = None  # None if not available (requires SMC/IOReport for accurate total)
     
     # GPU
     gpu_usage: Optional[float] = None  # percentage, None if not available
