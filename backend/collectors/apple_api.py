@@ -130,10 +130,22 @@ class AppleAPICollector:
         # Try IOReport API first (no sudo required)
         if self._ioreport_available and self._ioreport:
             result = self._collect_via_ioreport()
-            if result is not None:
+            # If IOReport returns something but power is all zero, try fallback
+            def _has_power(m: AppleMetrics) -> bool:
+                return any([
+                    (m.cpu_power or 0) > 0,
+                    (m.gpu_power or 0) > 0,
+                    (m.ane_power or 0) > 0,
+                    (m.dram_power or 0) > 0,
+                ])
+            if result is not None and _has_power(result):
                 return result
+            # If no power data, attempt fallback to powermetrics
+            if self._debug:
+                import sys
+                print("[DEBUG] IOReport returned no power data, falling back to powermetrics", file=sys.stderr)
         
-        # Fallback to powermetrics if IOReport not available
+        # Fallback to powermetrics if IOReport not available or produced no data
         # Note: This requires sudo, so it may fail
         if self._powermetrics_available:
             result = self._collect_via_powermetrics()
