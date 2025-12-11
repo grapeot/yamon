@@ -32,14 +32,14 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
     if (!chartInstance.current) return
 
     const updatedHistory = [...history, cpuPercent].slice(-120)
-    
+
     // 检测 P 核和 E 核
     // Apple Silicon 通常：M1/M2/M3: 4P+4E, M1 Pro/Max: 8P+2E, M2 Pro/Max: 8P+4E, M3 Pro: 6P+6E, M3 Max: 12P+4E
     // 简单策略：假设前一半是 P 核，后一半是 E 核（对于大多数情况）
     // 或者根据核心数量推断
     let pCoreCount = 0
     let eCoreCount = 0
-    
+
     if (cpuCount === 8) {
       // M1/M2/M3: 4P + 4E
       pCoreCount = 4
@@ -66,10 +66,10 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
     // 计算 P 核和 E 核的平均使用率
     const pCores = cpuPerCore.slice(0, pCoreCount)
     const eCores = cpuPerCore.slice(pCoreCount)
-    
+
     const pCoreAvg = pCores.length > 0 ? pCores.reduce((sum, val) => sum + val, 0) / pCores.length : 0
     const eCoreAvg = eCores.length > 0 ? eCores.reduce((sum, val) => sum + val, 0) / eCores.length : 0
-    
+
     // 计算总使用率用于分配历史数据
     const totalCoreUsage = pCoreAvg * pCoreCount + eCoreAvg * eCoreCount
     const pRatio = totalCoreUsage > 0 ? (pCoreAvg * pCoreCount) / totalCoreUsage : 0
@@ -127,7 +127,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
           stack: 'CPU',
           smooth: false,
           showSymbol: false,
-          areaStyle: { 
+          areaStyle: {
             opacity: 0.6,
             color: {
               type: 'linear',
@@ -151,7 +151,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
           stack: 'CPU',
           smooth: false,
           showSymbol: false,
-          areaStyle: { 
+          areaStyle: {
             opacity: 0.6,
             color: {
               type: 'linear',
@@ -175,7 +175,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
 
   return (
     <div className="chart-container">
-      <div ref={chartRef} style={{ width: '100%', height: '200px' }}></div>
+      <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )
 }

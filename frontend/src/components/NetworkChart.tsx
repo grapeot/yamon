@@ -33,7 +33,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
 
     const updatedSentHistory = [...sentHistory, sentRate].slice(-120)
     const updatedRecvHistory = [...recvHistory, recvRate].slice(-120)
-    
+
     // 计算最大值用于Y轴
     const maxValue = Math.max(
       ...updatedSentHistory,
@@ -93,7 +93,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         min: 0,
         name: 'Bytes/s',
         nameTextStyle: { color: '#aaa', fontSize: 12 },
-        axisLabel: { 
+        axisLabel: {
           color: '#aaa',
           fontSize: 12,
           formatter: (value: number) => {
@@ -160,7 +160,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
 
   return (
     <div className="chart-container">
-      <div ref={chartRef} style={{ width: '100%', height: '200px' }}></div>
+      <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )
 }

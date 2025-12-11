@@ -101,7 +101,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
 
   return (
     <div className="chart-container">
-      <div ref={chartRef} style={{ width: '100%', height: '200px' }}></div>
+      <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )
 }
