@@ -166,14 +166,18 @@ class AppleAPICollector:
                         # Merge CPU frequencies from powermetrics
                         if powermetrics_result.pcpu_freq_mhz is not None:
                             ioreport_result.pcpu_freq_mhz = powermetrics_result.pcpu_freq_mhz
-                            if self._debug:
-                                import sys
-                                print(f"[DEBUG] Merged P-core frequency from powermetrics: {ioreport_result.pcpu_freq_mhz} MHz", file=sys.stderr)
+                            import sys
+                            print(f"[DEBUG] Merged P-core frequency from powermetrics: {ioreport_result.pcpu_freq_mhz} MHz", file=sys.stderr)
+                        else:
+                            import sys
+                            print(f"[DEBUG] powermetrics_result.pcpu_freq_mhz is None", file=sys.stderr)
                         if powermetrics_result.ecpu_freq_mhz is not None:
                             ioreport_result.ecpu_freq_mhz = powermetrics_result.ecpu_freq_mhz
-                            if self._debug:
-                                import sys
-                                print(f"[DEBUG] Merged E-core frequency from powermetrics: {ioreport_result.ecpu_freq_mhz} MHz", file=sys.stderr)
+                            import sys
+                            print(f"[DEBUG] Merged E-core frequency from powermetrics: {ioreport_result.ecpu_freq_mhz} MHz", file=sys.stderr)
+                        else:
+                            import sys
+                            print(f"[DEBUG] powermetrics_result.ecpu_freq_mhz is None", file=sys.stderr)
                 return ioreport_result
             # If no power data, attempt fallback to powermetrics
             if self._debug:
