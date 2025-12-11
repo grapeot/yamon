@@ -186,17 +186,22 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcp
   const calculatedTotal = cpuPPercent + cpuEPercent
   const displayTotal = Math.abs(cpuPercent - calculatedTotal) < 0.1 ? cpuPercent : calculatedTotal
   let titleText = `CPU Usage: ${displayTotal.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`
-  if ((pcpuFreqMhz !== null && pcpuFreqMhz !== undefined) || (ecpuFreqMhz !== null && ecpuFreqMhz !== undefined)) {
-    const freqParts: string[] = []
-    if (pcpuFreqMhz !== null && pcpuFreqMhz !== undefined) {
-      freqParts.push(`P: ${pcpuFreqMhz.toFixed(0)} MHz`)
-    }
-    if (ecpuFreqMhz !== null && ecpuFreqMhz !== undefined) {
-      freqParts.push(`E: ${ecpuFreqMhz.toFixed(0)} MHz`)
-    }
-    if (freqParts.length > 0) {
-      titleText += ` [${freqParts.join(', ')}]`
-    }
+  
+  // Debug: log frequency values
+  if (process.env.NODE_ENV === 'development') {
+    console.log('CPU Frequencies:', { pcpuFreqMhz, ecpuFreqMhz })
+  }
+  
+  // Add frequency information if available
+  const freqParts: string[] = []
+  if (pcpuFreqMhz != null && typeof pcpuFreqMhz === 'number' && !isNaN(pcpuFreqMhz)) {
+    freqParts.push(`P: ${pcpuFreqMhz.toFixed(0)} MHz`)
+  }
+  if (ecpuFreqMhz != null && typeof ecpuFreqMhz === 'number' && !isNaN(ecpuFreqMhz)) {
+    freqParts.push(`E: ${ecpuFreqMhz.toFixed(0)} MHz`)
+  }
+  if (freqParts.length > 0) {
+    titleText += ` [${freqParts.join(', ')}]`
   }
 
   return (
