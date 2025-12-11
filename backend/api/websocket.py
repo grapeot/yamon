@@ -45,8 +45,8 @@ async def websocket_metrics(websocket: WebSocket):
                 "ane_usage": metrics.ane_usage,
             })
             
-            # 等待 1 秒
-            await asyncio.sleep(1)
+            # 等待 0.5 秒（2fps）
+            await asyncio.sleep(0.5)
             
     except WebSocketDisconnect:
         pass
