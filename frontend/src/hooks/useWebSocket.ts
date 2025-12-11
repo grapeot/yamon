@@ -27,11 +27,12 @@ export function useWebSocket() {
 
   useEffect(() => {
     // 确定 WebSocket URL
+    // 在开发环境中，Vite proxy 会将 /ws 转发到后端
+    // 在生产环境中，使用相同的 host
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const host = import.meta.env.DEV 
-      ? 'localhost:8000'  // 开发环境
-      : window.location.host  // 生产环境
-    const wsUrl = `${protocol}//${host}/ws/metrics`
+    const wsUrl = import.meta.env.DEV
+      ? `${protocol}//${window.location.host}/ws/metrics`  // 开发环境：通过 Vite proxy
+      : `${protocol}//${window.location.host}/ws/metrics`  // 生产环境：同源
 
     const ws = new WebSocket(wsUrl)
     wsRef.current = ws
