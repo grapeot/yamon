@@ -358,39 +358,57 @@ class AppleAPICollector:
                 pass
         
         # Try to extract GPU usage (percentage)
-        # powermetrics may output GPU usage in various formats:
-        # "GPU Utilization: 45.2%"
-        # "GPU Usage: 45.2%"
-        # "GPU: 45.2%"
-        gpu_usage_patterns = [
-            r'GPU.*?Utilization[:\s]+([\d.]+)\s*%',
-            r'GPU.*?Usage[:\s]+([\d.]+)\s*%',
-            r'GPU[:\s]+([\d.]+)\s*%',
-            r'gpu_utilization[:\s]+([\d.]+)',
-            r'gpu_usage[:\s]+([\d.]+)',
-        ]
-        for pattern in gpu_usage_patterns:
-            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
-            if match:
-                try:
-                    metrics.gpu_usage = float(match.group(1))
-                    import sys
-                    print(f"[DEBUG] Found GPU usage via pattern '{pattern}': {metrics.gpu_usage}%", file=sys.stderr)
-                    break
-                except (ValueError, IndexError):
-                    continue
+        # powermetrics outputs GPU usage in the "**** GPU usage ****" section
+        # Format: "GPU idle residency: X.XX%"
+        # GPU usage = 100% - GPU idle residency
+        # Or use "GPU HW active residency: X.XX%" directly
         
-        # Log if GPU usage not found
+        # First, try to find GPU idle residency and calculate usage
+        gpu_idle_match = re.search(r'GPU idle residency[:\s]+([\d.]+)\s*%', text, re.IGNORECASE | re.MULTILINE)
+        if gpu_idle_match:
+            try:
+                idle_percent = float(gpu_idle_match.group(1))
+                metrics.gpu_usage = 100.0 - idle_percent
+                import sys
+                print(f"[DEBUG] Found GPU usage via idle residency: {metrics.gpu_usage}% (idle: {idle_percent}%)", file=sys.stderr)
+            except (ValueError, IndexError):
+                pass
+        
+        # If not found via idle residency, try GPU HW active residency
+        if metrics.gpu_usage is None:
+            gpu_active_match = re.search(r'GPU HW active residency[:\s]+([\d.]+)\s*%', text, re.IGNORECASE | re.MULTILINE)
+            if gpu_active_match:
+                try:
+                    metrics.gpu_usage = float(gpu_active_match.group(1))
+                    import sys
+                    print(f"[DEBUG] Found GPU usage via HW active residency: {metrics.gpu_usage}%", file=sys.stderr)
+                except (ValueError, IndexError):
+                    pass
+        
+        # Fallback: try other patterns
+        if metrics.gpu_usage is None:
+            gpu_usage_patterns = [
+                r'GPU.*?Utilization[:\s]+([\d.]+)\s*%',
+                r'GPU.*?Usage[:\s]+([\d.]+)\s*%',
+                r'GPU[:\s]+([\d.]+)\s*%',
+                r'gpu_utilization[:\s]+([\d.]+)',
+                r'gpu_usage[:\s]+([\d.]+)',
+            ]
+            for pattern in gpu_usage_patterns:
+                match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+                if match:
+                    try:
+                        metrics.gpu_usage = float(match.group(1))
+                        import sys
+                        print(f"[DEBUG] Found GPU usage via pattern '{pattern}': {metrics.gpu_usage}%", file=sys.stderr)
+                        break
+                    except (ValueError, IndexError):
+                        continue
+        
+        # Log if GPU usage still not found
         if metrics.gpu_usage is None:
             import sys
-            # Extract GPU-related sections for debugging
-            gpu_sections = re.findall(r'(?i).*gpu.*?(?:\n|$)', text)
-            if gpu_sections:
-                print(f"[DEBUG] GPU-related sections found ({len(gpu_sections)}):", file=sys.stderr)
-                for i, section in enumerate(gpu_sections[:5]):  # Show first 5
-                    print(f"[DEBUG]   Section {i+1}: {section[:200]}", file=sys.stderr)
-            else:
-                print(f"[DEBUG] No GPU-related sections found in powermetrics output", file=sys.stderr)
+            print(f"[DEBUG] GPU usage not found in powermetrics output", file=sys.stderr)
         
         # Try to extract ANE usage if available
         ane_usage_patterns = [
