@@ -120,6 +120,20 @@ function App() {
             </div>
 
             <div className="metric-section">
+              <GpuChart 
+                gpuUsage={typedMetrics.gpu_usage}
+                history={history.gpu_usage}
+              />
+            </div>
+
+            <div className="metric-section">
+              <AneChart 
+                aneUsage={typedMetrics.ane_usage}
+                history={history.ane_usage}
+              />
+            </div>
+
+            <div className="metric-section">
               <NetworkChart 
                 sentRate={typedMetrics.network_sent_rate}
                 recvRate={typedMetrics.network_recv_rate}
@@ -137,20 +151,6 @@ function App() {
                 cpuHistory={history.cpu_power}
                 gpuHistory={history.gpu_power}
                 aneHistory={history.ane_power}
-              />
-            </div>
-
-            <div className="metric-section">
-              <GpuChart 
-                gpuUsage={typedMetrics.gpu_usage}
-                history={history.gpu_usage}
-              />
-            </div>
-
-            <div className="metric-section">
-              <AneChart 
-                aneUsage={typedMetrics.ane_usage}
-                history={history.ane_usage}
               />
             </div>
           </div>
