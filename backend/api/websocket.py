@@ -94,16 +94,14 @@ async def websocket_metrics(websocket: WebSocket):
             p_cores = cpu_per_core[:p_core_count] if len(cpu_per_core) >= p_core_count else []
             e_cores = cpu_per_core[p_core_count:] if len(cpu_per_core) > p_core_count else []
             
-            # 计算 P 核和 E 核的总算力（所有核心使用率之和）
-            p_total_usage = sum(p_cores) if p_cores else 0.0
-            e_total_usage = sum(e_cores) if e_cores else 0.0
-            total_usage = p_total_usage + e_total_usage
-            
-            # 计算 P 核和 E 核占整体CPU算力的百分比
-            # 这样 P% + E% = 100%，表示它们各自占整体算力的比例
-            if total_usage > 0:
-                cpu_p_percent = (p_total_usage / total_usage) * 100.0
-                cpu_e_percent = (e_total_usage / total_usage) * 100.0
+            # 计算 P 核和 E 核对总CPU使用率的贡献百分比
+            # cpu_percent 是所有核心的平均使用率，即 sum(cpu_per_core) / cpu_count
+            # 所以 P核贡献 = sum(p_cores) / cpu_count
+            # E核贡献 = sum(e_cores) / cpu_count
+            # P核贡献 + E核贡献 = cpu_percent
+            if cpu_count > 0:
+                cpu_p_percent = (sum(p_cores) / cpu_count) if p_cores else 0.0
+                cpu_e_percent = (sum(e_cores) / cpu_count) if e_cores else 0.0
             else:
                 cpu_p_percent = 0.0
                 cpu_e_percent = 0.0
