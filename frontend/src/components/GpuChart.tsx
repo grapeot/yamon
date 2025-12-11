@@ -29,7 +29,7 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, gpuUsage || 0].slice(-60)
+    const updatedHistory = [...history, gpuUsage || 0].slice(-120)
 
     chartInstance.current.setOption({
       title: {

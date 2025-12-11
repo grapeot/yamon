@@ -31,8 +31,8 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedSentHistory = [...sentHistory, sentRate].slice(-60)
-    const updatedRecvHistory = [...recvHistory, recvRate].slice(-60)
+    const updatedSentHistory = [...sentHistory, sentRate].slice(-120)
+    const updatedRecvHistory = [...recvHistory, recvRate].slice(-120)
     
     // 计算最大值用于Y轴
     const maxValue = Math.max(

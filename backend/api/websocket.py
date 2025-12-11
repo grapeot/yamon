@@ -12,7 +12,7 @@ import json
 
 router = APIRouter()
 collector = MetricsCollector()
-history = MetricsHistory(max_size=60)
+history = MetricsHistory(max_size=120)
 
 @router.websocket("/metrics")
 async def websocket_metrics(websocket: WebSocket):

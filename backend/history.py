@@ -8,14 +8,14 @@ from dataclasses import dataclass
 @dataclass
 class HistoryConfig:
     """Configuration for history storage"""
-    max_size: int = 60  # Keep 60 data points (60 seconds at 1s interval)
+    max_size: int = 120  # Keep 120 data points (2 minutes at 1s interval)
     enabled: bool = True
 
 
 class HistoryBuffer:
     """Circular buffer for storing historical metrics"""
     
-    def __init__(self, max_size: int = 60):
+    def __init__(self, max_size: int = 120):
         self.max_size = max_size
         self._data = deque(maxlen=max_size)
     
@@ -47,7 +47,7 @@ class HistoryBuffer:
 class MetricsHistory:
     """Store history for all metrics"""
     
-    def __init__(self, max_size: int = 60):
+    def __init__(self, max_size: int = 120):
         self.max_size = max_size
         
         # CPU

@@ -31,7 +31,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, memoryPercent].slice(-60)
+    const updatedHistory = [...history, memoryPercent].slice(-120)
 
     chartInstance.current.setOption({
       title: {

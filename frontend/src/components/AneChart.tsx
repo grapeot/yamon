@@ -29,7 +29,7 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, aneUsage || 0].slice(-60)
+    const updatedHistory = [...history, aneUsage || 0].slice(-120)
 
     chartInstance.current.setOption({
       title: {

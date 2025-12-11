@@ -31,7 +31,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, cpuPercent].slice(-60)
+    const updatedHistory = [...history, cpuPercent].slice(-120)
     
     // 检测 P 核和 E 核
     // Apple Silicon 通常：M1/M2/M3: 4P+4E, M1 Pro/Max: 8P+2E, M2 Pro/Max: 8P+4E, M3 Pro: 6P+6E, M3 Max: 12P+4E

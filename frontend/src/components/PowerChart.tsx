@@ -42,9 +42,9 @@ export function PowerChart({
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedCpuHistory = [...cpuHistory, cpuPower || 0].slice(-60)
-    const updatedGpuHistory = [...gpuHistory, gpuPower || 0].slice(-60)
-    const updatedAneHistory = [...aneHistory, anePower || 0].slice(-60)
+    const updatedCpuHistory = [...cpuHistory, cpuPower || 0].slice(-120)
+    const updatedGpuHistory = [...gpuHistory, gpuPower || 0].slice(-120)
+    const updatedAneHistory = [...aneHistory, anePower || 0].slice(-120)
 
     // 计算总功耗历史（用于堆叠）
     const totalHistory = updatedCpuHistory.map((cpu, i) => 
