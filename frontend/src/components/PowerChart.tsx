@@ -74,14 +74,14 @@ export function PowerChart({
       },
       legend: {
         data: ['CPU', 'GPU', 'ANE'],
-        top: '10%',
+        top: '25%',
         textStyle: { color: '#aaa' },
       },
       grid: {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '45%',
+        top: '35%',
         containLabel: true,
       },
       animation: false,

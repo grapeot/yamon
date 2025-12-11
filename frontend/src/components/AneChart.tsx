@@ -45,7 +45,7 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '40%',
+        top: '30%',
         containLabel: true,
       },
       animation: false,

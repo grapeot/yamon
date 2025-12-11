@@ -94,14 +94,14 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
       },
       legend: {
         data: [`P-Cores (${pCoreCount})`, `E-Cores (${eCoreCount})`],
-        top: '10%',
+        top: '25%',
         textStyle: { color: '#aaa' },
       },
       grid: {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '40%',
+        top: '30%',
         containLabel: true,
       },
       animation: false,

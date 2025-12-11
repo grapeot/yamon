@@ -71,14 +71,14 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
       },
       legend: {
         data: ['Upload', 'Download'],
-        top: '10%',
+        top: '25%',
         textStyle: { color: '#aaa' },
       },
       grid: {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '45%',
+        top: '35%',
         containLabel: true,
       },
       animation: false,

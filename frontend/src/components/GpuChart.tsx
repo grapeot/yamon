@@ -45,7 +45,7 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '40%',
+        top: '30%',
         containLabel: true,
       },
       animation: false,
