@@ -63,16 +63,16 @@ function App() {
     if (!typedMetrics) return
 
     setHistory((prev) => ({
-      cpu_percent: [...prev.cpu_percent, typedMetrics.cpu_percent].slice(-60),
-      memory_percent: [...prev.memory_percent, typedMetrics.memory_percent].slice(-60),
-      network_sent_rate: [...prev.network_sent_rate, typedMetrics.network_sent_rate].slice(-60),
-      network_recv_rate: [...prev.network_recv_rate, typedMetrics.network_recv_rate].slice(-60),
-      cpu_power: [...prev.cpu_power, typedMetrics.cpu_power || 0].slice(-60),
-      gpu_power: [...prev.gpu_power, typedMetrics.gpu_power || 0].slice(-60),
-      ane_power: [...prev.ane_power, typedMetrics.ane_power || 0].slice(-60),
-      system_power: [...prev.system_power, typedMetrics.system_power || 0].slice(-60),
-      gpu_usage: [...prev.gpu_usage, typedMetrics.gpu_usage || 0].slice(-60),
-      ane_usage: [...prev.ane_usage, typedMetrics.ane_usage || 0].slice(-60),
+      cpu_percent: [...prev.cpu_percent, typedMetrics.cpu_percent].slice(-120),
+      memory_percent: [...prev.memory_percent, typedMetrics.memory_percent].slice(-120),
+      network_sent_rate: [...prev.network_sent_rate, typedMetrics.network_sent_rate].slice(-120),
+      network_recv_rate: [...prev.network_recv_rate, typedMetrics.network_recv_rate].slice(-120),
+      cpu_power: [...prev.cpu_power, typedMetrics.cpu_power || 0].slice(-120),
+      gpu_power: [...prev.gpu_power, typedMetrics.gpu_power || 0].slice(-120),
+      ane_power: [...prev.ane_power, typedMetrics.ane_power || 0].slice(-120),
+      system_power: [...prev.system_power, typedMetrics.system_power || 0].slice(-120),
+      gpu_usage: [...prev.gpu_usage, typedMetrics.gpu_usage || 0].slice(-120),
+      ane_usage: [...prev.ane_usage, typedMetrics.ane_usage || 0].slice(-120),
     }))
   }, [typedMetrics])
 
