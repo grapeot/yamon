@@ -621,39 +621,44 @@ class AppleAPICollector:
                     cpu_numbers = [cpu_num for cpu_num, _ in cpu_freqs]
                     
                     # Try to identify clusters from text
-                    # Method 1: Extract all CPU numbers from E-Cluster and P-Cluster sections
-                    e_cluster_section = re.search(r'E-Cluster.*?(?=P\d*-Cluster|$)', text, re.IGNORECASE | re.DOTALL)
-                    p_cluster_section = re.search(r'P\d*-Cluster.*?(?=E-Cluster|$)', text, re.IGNORECASE | re.DOTALL)
+                    # Method 1: Use position-based matching - find cluster boundaries and assign CPUs based on position
+                    e_cluster_match = re.search(r'E-Cluster', text, re.IGNORECASE)
+                    p_cluster_match = re.search(r'P\d*-Cluster', text, re.IGNORECASE)
                     
                     e_core_indices = []
                     p_core_indices = []
                     
-                    if e_cluster_section and p_cluster_section:
-                        # Extract all CPU numbers from each cluster section
-                        e_cluster_cpus = set()
-                        p_cluster_cpus = set()
+                    if e_cluster_match and p_cluster_match:
+                        # Find the end positions of cluster headers
+                        e_cluster_end = e_cluster_match.end()
+                        p_cluster_end = p_cluster_match.end()
                         
-                        # Find all CPU numbers in E-Cluster section
-                        e_cpu_matches = re.findall(r'CPU\s+(\d+)\s+frequency', e_cluster_section.group(0), re.IGNORECASE)
-                        for cpu_str in e_cpu_matches:
-                            e_cluster_cpus.add(int(cpu_str))
+                        import sys
+                        print(f"[DEBUG] E-Cluster ends at position: {e_cluster_end}, P-Cluster ends at position: {p_cluster_end}", file=sys.stderr)
+                        sys.stderr.flush()
                         
-                        # Find all CPU numbers in P-Cluster section
-                        p_cpu_matches = re.findall(r'CPU\s+(\d+)\s+frequency', p_cluster_section.group(0), re.IGNORECASE)
-                        for cpu_str in p_cpu_matches:
-                            p_cluster_cpus.add(int(cpu_str))
-                        
-                        # Assign CPUs to clusters based on which section they appear in
+                        # Assign CPUs to clusters based on their position in text
                         for cpu_num, freq in cpu_freqs:
-                            if cpu_num in e_cluster_cpus:
-                                e_core_indices.append((cpu_num, freq))
-                            elif cpu_num in p_cluster_cpus:
-                                p_core_indices.append((cpu_num, freq))
+                            # Find the position of this CPU frequency in the text
+                            cpu_match = re.search(rf'CPU\s+{cpu_num}\s+frequency', text, re.IGNORECASE)
+                            if cpu_match:
+                                cpu_pos = cpu_match.start()
+                                # If CPU appears between E-Cluster and P-Cluster, it's an E-core
+                                # If CPU appears after P-Cluster, it's a P-core
+                                if e_cluster_end < cpu_pos < p_cluster_end:
+                                    e_core_indices.append((cpu_num, freq))
+                                    print(f"[DEBUG] CPU {cpu_num} ({freq} MHz) assigned to E-Cluster (pos {cpu_pos})", file=sys.stderr)
+                                elif cpu_pos > p_cluster_end:
+                                    p_core_indices.append((cpu_num, freq))
+                                    print(f"[DEBUG] CPU {cpu_num} ({freq} MHz) assigned to P-Cluster (pos {cpu_pos})", file=sys.stderr)
+                                else:
+                                    # CPU appears before E-Cluster, use fallback logic
+                                    print(f"[DEBUG] CPU {cpu_num} ({freq} MHz) position {cpu_pos} is before E-Cluster, using fallback", file=sys.stderr)
                         
-                        if self._debug:
-                            import sys
-                            print(f"[DEBUG] E-Cluster CPUs: {sorted([c for c, _ in e_core_indices])}", file=sys.stderr)
-                            print(f"[DEBUG] P-Cluster CPUs: {sorted([c for c, _ in p_core_indices])}", file=sys.stderr)
+                        import sys
+                        print(f"[DEBUG] E-Cluster CPUs: {sorted([c for c, _ in e_core_indices])}", file=sys.stderr)
+                        print(f"[DEBUG] P-Cluster CPUs: {sorted([c for c, _ in p_core_indices])}", file=sys.stderr)
+                        sys.stderr.flush()
                     
                     # Fallback: Use CPU count to estimate P/E core split if clusters not found
                     if not e_core_indices and not p_core_indices:
