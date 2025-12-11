@@ -135,6 +135,9 @@ class AppleAPICollector:
             if self._debug:
                 import sys
                 print(f"[DEBUG] Parsed metrics: CPU={parsed.cpu_power}W, GPU={parsed.gpu_power}W, ANE={parsed.ane_power}W, GPU Usage={parsed.gpu_usage}%", file=sys.stderr)
+                # Log raw powermetrics output for debugging GPU usage
+                print(f"[DEBUG] Raw powermetrics output (first 2000 chars):\n{result.stdout[:2000]}", file=sys.stderr)
+                print(f"[DEBUG] Raw powermetrics output (last 2000 chars):\n{result.stdout[-2000:]}", file=sys.stderr)
             return parsed
         
         except subprocess.TimeoutExpired:
@@ -371,9 +374,23 @@ class AppleAPICollector:
             if match:
                 try:
                     metrics.gpu_usage = float(match.group(1))
+                    import sys
+                    print(f"[DEBUG] Found GPU usage via pattern '{pattern}': {metrics.gpu_usage}%", file=sys.stderr)
                     break
                 except (ValueError, IndexError):
                     continue
+        
+        # Log if GPU usage not found
+        if metrics.gpu_usage is None:
+            import sys
+            # Extract GPU-related sections for debugging
+            gpu_sections = re.findall(r'(?i).*gpu.*?(?:\n|$)', text)
+            if gpu_sections:
+                print(f"[DEBUG] GPU-related sections found ({len(gpu_sections)}):", file=sys.stderr)
+                for i, section in enumerate(gpu_sections[:5]):  # Show first 5
+                    print(f"[DEBUG]   Section {i+1}: {section[:200]}", file=sys.stderr)
+            else:
+                print(f"[DEBUG] No GPU-related sections found in powermetrics output", file=sys.stderr)
         
         # Try to extract ANE usage if available
         ane_usage_patterns = [
@@ -396,6 +413,7 @@ class AppleAPICollector:
     
     def _get_gpu_usage_via_ioreg(self) -> Optional[float]:
         """Try to get GPU usage percentage via ioreg"""
+        import sys
         try:
             # Try to query GPU performance controller
             # This is a best-effort attempt - may not work on all systems
@@ -405,6 +423,11 @@ class AppleAPICollector:
                 timeout=2,
                 text=True
             )
+            
+            if self._debug:
+                print(f"[DEBUG] ioreg IOAccelerator return code: {result.returncode}", file=sys.stderr)
+                if result.stdout:
+                    print(f"[DEBUG] ioreg IOAccelerator output (first 500 chars):\n{result.stdout[:500]}", file=sys.stderr)
             
             if result.returncode == 0 and result.stdout:
                 # Look for GPU utilization patterns in ioreg output
@@ -416,7 +439,10 @@ class AppleAPICollector:
                 )
                 if utilization_match:
                     try:
-                        return float(utilization_match.group(1))
+                        usage = float(utilization_match.group(1))
+                        if self._debug:
+                            print(f"[DEBUG] Found GPU usage via IOAccelerator: {usage}%", file=sys.stderr)
+                        return usage
                     except (ValueError, IndexError):
                         pass
             
@@ -427,6 +453,11 @@ class AppleAPICollector:
                 timeout=2,
                 text=True
             )
+            
+            if self._debug:
+                print(f"[DEBUG] ioreg AGXAccelerator return code: {result.returncode}", file=sys.stderr)
+                if result.stdout:
+                    print(f"[DEBUG] ioreg AGXAccelerator output (first 500 chars):\n{result.stdout[:500]}", file=sys.stderr)
             
             if result.returncode == 0 and result.stdout:
                 # Look for various GPU metrics
@@ -439,13 +470,21 @@ class AppleAPICollector:
                     match = re.search(pattern, result.stdout, re.IGNORECASE)
                     if match:
                         try:
-                            return float(match.group(1))
+                            usage = float(match.group(1))
+                            if self._debug:
+                                print(f"[DEBUG] Found GPU usage via AGXAccelerator pattern '{pattern}': {usage}%", file=sys.stderr)
+                            return usage
                         except (ValueError, IndexError):
                             continue
             
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            if self._debug:
+                print(f"[DEBUG] ioreg method did not find GPU usage", file=sys.stderr)
+            
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
             # ioreg may not be available or may fail
-            pass
+            if self._debug:
+                import sys
+                print(f"[DEBUG] ioreg error: {e}", file=sys.stderr)
         
         return None
     
