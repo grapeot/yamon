@@ -32,18 +32,21 @@ class AppleMetrics:
 
 
 class AppleAPICollector:
-    """Collect Apple Silicon specific metrics using powermetrics and SMC"""
+    """Collect Apple Silicon specific metrics using IOReport API (no sudo) or powermetrics (requires sudo)"""
     
     def __init__(self, debug=False):
         self._is_apple_silicon = self._check_apple_silicon()
         self._powermetrics_available = False
+        self._ioreport_available = False
         self._last_sample = None
         self._debug = debug
         self._smc = None
+        self._ioreport = None
         
         if self._is_apple_silicon:
             self._check_powermetrics()
             self._init_smc()
+            self._init_ioreport()
     
     def _init_smc(self):
         """Initialize SMC API for system power"""
@@ -58,6 +61,38 @@ class AppleAPICollector:
                 import sys
                 print(f"[DEBUG] Failed to initialize SMC: {e}", file=sys.stderr)
             self._smc = None
+    
+    def _init_ioreport(self):
+        """Initialize IOReport API for power metrics (no sudo required)"""
+        try:
+            try:
+                from backend.collectors.ioreport import IOReport, IOReportError
+            except ImportError:
+                from collectors.ioreport import IOReport, IOReportError
+            
+            self._ioreport = IOReport(debug=self._debug)
+            # Create subscription for Energy Model channels
+            channels = [
+                ("Energy Model", None),  # CPU/GPU/ANE power
+            ]
+            self._ioreport.create_subscription(channels)
+            self._ioreport_available = True
+            
+            if self._debug:
+                import sys
+                print("[DEBUG] IOReport API initialized successfully (no sudo required)", file=sys.stderr)
+        except IOReportError as e:
+            if self._debug:
+                import sys
+                print(f"[DEBUG] Failed to initialize IOReport: {e}", file=sys.stderr)
+            self._ioreport = None
+            self._ioreport_available = False
+        except Exception as e:
+            if self._debug:
+                import sys
+                print(f"[DEBUG] Failed to initialize IOReport: {e}", file=sys.stderr)
+            self._ioreport = None
+            self._ioreport_available = False
     
     def _check_apple_silicon(self) -> bool:
         """Check if running on Apple Silicon"""
@@ -80,11 +115,17 @@ class AppleAPICollector:
             self._powermetrics_available = False
     
     def collect(self) -> Optional[AppleMetrics]:
-        """Collect Apple Silicon metrics using powermetrics"""
+        """Collect Apple Silicon metrics using IOReport API (preferred, no sudo) or powermetrics (fallback, requires sudo)"""
         if not self._is_apple_silicon:
             return None
         
-        # Try to use powermetrics if available
+        # Try IOReport API first (no sudo required)
+        if self._ioreport_available and self._ioreport:
+            result = self._collect_via_ioreport()
+            if result is not None:
+                return result
+        
+        # Fallback to powermetrics if IOReport not available
         # Note: This requires sudo, so it may fail
         if self._powermetrics_available:
             result = self._collect_via_powermetrics()
@@ -93,6 +134,42 @@ class AppleAPICollector:
         
         # Return empty metrics if not available
         return AppleMetrics()
+    
+    def _collect_via_ioreport(self) -> Optional[AppleMetrics]:
+        """Collect metrics using IOReport API (no sudo required)"""
+        try:
+            if not self._ioreport:
+                return None
+            
+            # Get power metrics sample (1000ms duration)
+            metrics_dict = self._ioreport.get_sample_delta(1000)
+            
+            metrics = AppleMetrics()
+            metrics.cpu_power = metrics_dict.get('cpu_power', 0.0)
+            metrics.gpu_power = metrics_dict.get('gpu_power', 0.0)
+            metrics.ane_power = metrics_dict.get('ane_power', 0.0)
+            metrics.dram_power = metrics_dict.get('dram_power', 0.0)
+            
+            # Try to get system power via SMC API
+            if self._smc:
+                smc_power = self._smc.get_system_power()
+                if smc_power is not None:
+                    metrics.system_power = smc_power
+                    if self._debug:
+                        import sys
+                        print(f"[DEBUG] Got system power from SMC: {smc_power}W", file=sys.stderr)
+            
+            if self._debug:
+                import sys
+                print(f"[DEBUG] IOReport metrics: CPU={metrics.cpu_power}W, GPU={metrics.gpu_power}W, ANE={metrics.ane_power}W", file=sys.stderr)
+            
+            return metrics
+            
+        except Exception as e:
+            if self._debug:
+                import sys
+                print(f"[DEBUG] Error in IOReport collection: {e}", file=sys.stderr)
+            return None
     
     def _collect_via_powermetrics(self) -> Optional[AppleMetrics]:
         """Collect metrics using powermetrics command"""
