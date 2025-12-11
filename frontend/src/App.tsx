@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useWebSocket } from './hooks/useWebSocket'
-import { MetricCard } from './components/MetricCard'
+import { CpuChart } from './components/CpuChart'
+import { MemoryChart } from './components/MemoryChart'
+import { NetworkChart } from './components/NetworkChart'
+import { PowerChart } from './components/PowerChart'
+import { GpuChart } from './components/GpuChart'
+import { AneChart } from './components/AneChart'
 import './App.css'
 
 // Define types inline to avoid import issues
@@ -97,99 +102,55 @@ function App() {
         ) : (
           <div className="metrics-grid">
             <div className="metric-section">
-              <h2>CPU</h2>
-              <MetricCard 
-                title="CPU Usage" 
-                value={typedMetrics.cpu_percent.toFixed(1)} 
-                unit="%" 
-              />
-              <div className="cpu-cores">
-                <h3>Per Core ({typedMetrics.cpu_count} cores)</h3>
-                <div className="cores-grid">
-                  {typedMetrics.cpu_per_core.map((percent, idx) => (
-                    <div key={idx} className="core-item">
-                      <div className="core-label">Core {idx}</div>
-                      <div className="core-value">{percent.toFixed(1)}%</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="metric-section">
-              <h2>Memory</h2>
-              <MetricCard 
-                title="Memory Usage" 
-                value={typedMetrics.memory_percent.toFixed(1)} 
-                unit="%" 
-              />
-              <div className="memory-details">
-                <div>Used: {formatBytes(typedMetrics.memory_used)}</div>
-                <div>Total: {formatBytes(typedMetrics.memory_total)}</div>
-                <div>Available: {formatBytes(typedMetrics.memory_available)}</div>
-              </div>
-            </div>
-
-            <div className="metric-section">
-              <h2>Network</h2>
-              <MetricCard 
-                title="Upload" 
-                value={formatBytes(typedMetrics.network_sent_rate)} 
-                unit="/s" 
-              />
-              <MetricCard 
-                title="Download" 
-                value={formatBytes(typedMetrics.network_recv_rate)} 
-                unit="/s" 
+              <CpuChart 
+                cpuPercent={typedMetrics.cpu_percent}
+                cpuPerCore={typedMetrics.cpu_per_core}
+                history={history.cpu_percent}
+                cpuCount={typedMetrics.cpu_count}
               />
             </div>
 
             <div className="metric-section">
-              <h2>Power</h2>
-              <MetricCard 
-                title="CPU Power" 
-                value={typedMetrics.cpu_power?.toFixed(2) || null} 
-                unit="W" 
-              />
-              <MetricCard 
-                title="GPU Power" 
-                value={typedMetrics.gpu_power?.toFixed(2) || null} 
-                unit="W" 
-              />
-              <MetricCard 
-                title="ANE Power" 
-                value={typedMetrics.ane_power?.toFixed(2) || null} 
-                unit="W" 
-              />
-              <MetricCard 
-                title="System Power" 
-                value={typedMetrics.system_power?.toFixed(2) || null} 
-                unit="W" 
+              <MemoryChart 
+                memoryPercent={typedMetrics.memory_percent}
+                memoryUsed={typedMetrics.memory_used}
+                memoryTotal={typedMetrics.memory_total}
+                history={history.memory_percent}
               />
             </div>
 
             <div className="metric-section">
-              <h2>GPU</h2>
-              <MetricCard 
-                title="GPU Usage" 
-                value={typedMetrics.gpu_usage?.toFixed(1) || null} 
-                unit="%" 
+              <NetworkChart 
+                sentRate={typedMetrics.network_sent_rate}
+                recvRate={typedMetrics.network_recv_rate}
+                sentHistory={history.network_sent_rate}
+                recvHistory={history.network_recv_rate}
               />
-              {typedMetrics.gpu_freq_mhz && (
-                <MetricCard 
-                  title="GPU Frequency" 
-                  value={typedMetrics.gpu_freq_mhz.toFixed(0)} 
-                  unit=" MHz" 
-                />
-              )}
             </div>
 
             <div className="metric-section">
-              <h2>ANE</h2>
-              <MetricCard 
-                title="ANE Usage" 
-                value={typedMetrics.ane_usage?.toFixed(1) || null} 
-                unit="%" 
+              <PowerChart 
+                cpuPower={typedMetrics.cpu_power}
+                gpuPower={typedMetrics.gpu_power}
+                anePower={typedMetrics.ane_power}
+                systemPower={typedMetrics.system_power}
+                cpuHistory={history.cpu_power}
+                gpuHistory={history.gpu_power}
+                aneHistory={history.ane_power}
+              />
+            </div>
+
+            <div className="metric-section">
+              <GpuChart 
+                gpuUsage={typedMetrics.gpu_usage}
+                history={history.gpu_usage}
+              />
+            </div>
+
+            <div className="metric-section">
+              <AneChart 
+                aneUsage={typedMetrics.ane_usage}
+                history={history.ane_usage}
               />
             </div>
           </div>
