@@ -249,6 +249,8 @@ class AppleAPICollector:
         if not text:
             return metrics
         
+        import sys
+        
         # powermetrics text format examples:
         # "CPU Power: 5.971 W"
         # "GPU Power: 1.435 W"  
@@ -351,6 +353,67 @@ class AppleAPICollector:
                     break
                 except (ValueError, IndexError):
                     continue
+        
+        # Extract system total power
+        # powermetrics may output "Combined Power (CPU + GPU + ANE): X mW"
+        # but system total power should include DRAM and other components
+        # Look for patterns like "Total Power", "System Power", or calculate from components
+        system_power_patterns = [
+            r'Total Power[:\s]+([\d.]+)\s*(?:mW|W)',
+            r'System Power[:\s]+([\d.]+)\s*(?:mW|W)',
+            r'Total.*?power[:\s]+([\d.]+)\s*(?:mW|W)',
+            r'system_power[:\s]+([\d.]+)',
+            r'total_power[:\s]+([\d.]+)',
+        ]
+        
+        for pattern in system_power_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+            if match:
+                try:
+                    value = float(match.group(1))
+                    # Check if it's mW (if > 100, likely mW for system power)
+                    if value > 100:
+                        metrics.system_power = value / 1000.0  # Convert mW to W
+                    else:
+                        metrics.system_power = value
+                    import sys
+                    if self._debug:
+                        print(f"[DEBUG] Found system power via pattern '{pattern}': {metrics.system_power}W", file=sys.stderr)
+                    break
+                except (ValueError, IndexError):
+                    continue
+        
+        # If system power not found, try to calculate from Combined Power + DRAM
+        # Note: This is approximate as it doesn't include all system components
+        # System total power typically includes: CPU + GPU + ANE + DRAM + other system components
+        # macmon shows ~50W total, which is higher than Combined Power (~9W)
+        # This suggests we need to use a different method or find the actual system power field
+        if metrics.system_power == 0.0:
+            combined_match = re.search(r'Combined Power.*?\(CPU.*?GPU.*?ANE\)[:\s]+([\d.]+)\s*mW', text, re.IGNORECASE)
+            if combined_match:
+                try:
+                    combined_mw = float(combined_match.group(1))
+                    combined_w = combined_mw / 1000.0
+                    # Try to find DRAM power
+                    dram_match = re.search(r'DRAM.*?Power[:\s]+([\d.]+)\s*(?:mW|W)', text, re.IGNORECASE)
+                    dram_w = 0.0
+                    if dram_match:
+                        try:
+                            dram_value = float(dram_match.group(1))
+                            dram_w = dram_value / 1000.0 if dram_value > 100 else dram_value
+                        except (ValueError, IndexError):
+                            pass
+                    
+                    # System power is typically much higher than combined power
+                    # Based on macmon showing ~50W vs Combined ~9W, there's significant overhead
+                    # For now, if we can't find actual system power, set to None
+                    # The frontend can display "N/A" or calculate an estimate
+                    # Note: To get accurate system power, we may need to use SMC or IOReport API
+                    if self._debug:
+                        print(f"[DEBUG] System power not found. Combined Power: {combined_w}W, DRAM: {dram_w}W. Setting to None (need SMC/IOReport for accurate total)", file=sys.stderr)
+                    metrics.system_power = None  # Set to None instead of approximate value
+                except (ValueError, IndexError):
+                    pass
         
         # Try to extract GPU frequency if available
         gpu_freq_match = re.search(r'GPU.*?frequency[:\s]+([\d.]+)\s*MHz', text, re.IGNORECASE)
