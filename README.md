@@ -94,5 +94,9 @@ Yamon bridges the gap between low-level hardware counters and high-level visuali
 ## 🔋 Power Monitoring Accuracy
 Yamon uses the same `mach_task_self()` iteration method as native tools to bypass macOS permission restrictions, allowing it to read the master **System Total Power (PSTR)** sensor with high precision.
 
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ---
 *Note: Some deeply protected metrics may strictly require root, but Yamon is designed to degrade runs gracefully.*
