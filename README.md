@@ -29,16 +29,21 @@ Unlock metrics that standard tools often hide:
 
 ### Install from PyPI (Recommended)
 
+The easiest way to install Yamon:
+
 ```bash
 pip install yamon
 ```
 
 After installation, start the monitor:
+
 ```bash
 yamon
 ```
 
 Visit **http://localhost:8000** to view your dashboard.
+
+📦 **Available on PyPI**: [https://pypi.org/project/yamon/](https://pypi.org/project/yamon/)
 
 ### Install from Source
 
