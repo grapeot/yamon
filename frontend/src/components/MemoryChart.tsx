@@ -37,6 +37,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
       title: {
         text: `Memory Usage: ${memoryPercent.toFixed(1)}%`,
         left: 'center',
+        top: 10,
         textStyle: { fontSize: 14, color: '#fff' },
       },
       tooltip: {
@@ -52,7 +53,7 @@ export function MemoryChart({ memoryPercent, memoryUsed, memoryTotal, history }:
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '15%',
+        top: '20%',
         containLabel: true,
       },
       xAxis: {

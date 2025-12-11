@@ -57,6 +57,7 @@ export function PowerChart({
       title: {
         text: `Power: CPU: ${(cpuPower || 0).toFixed(2)}W, GPU: ${(gpuPower || 0).toFixed(2)}W, ANE: ${(anePower || 0).toFixed(2)}W, System: ${(systemPower || 0).toFixed(2)}W`,
         left: 'center',
+        top: 10,
         textStyle: { fontSize: 12, color: '#fff' },
       },
       tooltip: {
@@ -80,7 +81,7 @@ export function PowerChart({
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '25%',
+        top: '30%',
         containLabel: true,
       },
       xAxis: {

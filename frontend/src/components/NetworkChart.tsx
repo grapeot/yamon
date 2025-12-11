@@ -56,6 +56,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
       title: {
         text: `Network: ↑ ${formatBytes(sentRate)} ↓ ${formatBytes(recvRate)}`,
         left: 'center',
+        top: 10,
         textStyle: { fontSize: 14, color: '#fff' },
       },
       tooltip: {
@@ -77,7 +78,7 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '25%',
+        top: '30%',
         containLabel: true,
       },
       xAxis: {

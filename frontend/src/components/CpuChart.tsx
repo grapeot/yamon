@@ -63,6 +63,7 @@ export function CpuChart({ cpuPercent, cpuPerCore, history, cpuCount }: CpuChart
       title: {
         text: `CPU Usage: ${cpuPercent.toFixed(1)}%`,
         left: 'center',
+        top: 10,
         textStyle: { fontSize: 14, color: '#fff' },
       },
       tooltip: {

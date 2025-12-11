@@ -35,6 +35,7 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
       title: {
         text: `GPU Usage: ${(gpuUsage || 0).toFixed(1)}%`,
         left: 'center',
+        top: 10,
         textStyle: { fontSize: 14, color: '#fff' },
       },
       tooltip: {
@@ -44,7 +45,7 @@ export function GpuChart({ gpuUsage, history }: GpuChartProps) {
         left: '3%',
         right: '4%',
         bottom: '3%',
-        top: '15%',
+        top: '20%',
         containLabel: true,
       },
       xAxis: {
