@@ -406,12 +406,16 @@ class AppleAPICollector:
     
     def _parse_powermetrics_text(self, text: str) -> Optional[AppleMetrics]:
         """Parse powermetrics text output"""
+        import sys
+        print(f"[DEBUG] _parse_powermetrics_text called, text length: {len(text) if text else 0}", file=sys.stderr)
+        sys.stderr.flush()
+        
         metrics = AppleMetrics()
         
         if not text:
+            print(f"[DEBUG] _parse_powermetrics_text: text is empty, returning empty metrics", file=sys.stderr)
+            sys.stderr.flush()
             return metrics
-        
-        import sys
         
         # powermetrics text format examples:
         # "CPU Power: 5.971 W"
@@ -585,12 +589,16 @@ class AppleAPICollector:
         # Method 1: Use cluster information (E-Cluster vs P-Cluster)
         # Method 2: Use CPU number ranges (E-cores typically come first, then P-cores)
         
+        import sys
+        print(f"[DEBUG] Starting CPU frequency extraction from powermetrics text", file=sys.stderr)
+        sys.stderr.flush()
+        
         # Extract CPU frequencies with their CPU numbers
         cpu_freq_pattern = re.compile(r'CPU\s+(\d+)\s+frequency[:\s]+([\d.]+)\s*MHz', re.IGNORECASE)
         cpu_freq_data = cpu_freq_pattern.findall(text)
         
-        import sys
         print(f"[DEBUG] Found {len(cpu_freq_data)} CPU frequency entries", file=sys.stderr)
+        sys.stderr.flush()
         if cpu_freq_data:
             print(f"[DEBUG] Sample CPU frequencies: {cpu_freq_data[:5]}", file=sys.stderr)
         else:
@@ -691,9 +699,10 @@ class AppleAPICollector:
                     else:
                         print("[DEBUG] No P-core indices found", file=sys.stderr)
             except (ValueError, IndexError) as e:
-                if self._debug:
-                    import sys
-                    print(f"[DEBUG] Error parsing CPU frequencies: {e}", file=sys.stderr)
+                import sys
+                print(f"[DEBUG] Error parsing CPU frequencies: {e}", file=sys.stderr)
+                import traceback
+                print(f"[DEBUG] Traceback: {traceback.format_exc()}", file=sys.stderr)
                 pass
         
         # Try to extract GPU frequency if available
