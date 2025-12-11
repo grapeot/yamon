@@ -36,6 +36,7 @@ class YamonApp(App):
     
     #main-container {
         height: 1fr;
+        layout: vertical;
     }
     
     Horizontal {
@@ -46,6 +47,7 @@ class YamonApp(App):
     #row1-col1, #row1-col2, #row2-col1, #row2-col2, #row3-col1, #row3-col2 {
         width: 1fr;
         padding: 1;
+        height: auto;
     }
     
     #cpu-label, #memory-label, #network-label,
@@ -81,12 +83,10 @@ class YamonApp(App):
     .chart-box {
         border: solid $primary;
         padding: 1;
-        height: auto;
+        height: 8;
         width: 1fr;
-        min-height: 6;
-        max-height: 8;
         margin-top: 0;
-        margin-bottom: 1;
+        margin-bottom: 0;
     }
     """
     
