@@ -296,30 +296,26 @@ class IOReport:
             raise IOReportError("Failed to create IOReport subscription")
     
     def get_sample_delta(self, duration_ms: int = 1000) -> Dict:
-        """Get power metrics sample delta over duration"""
+        """Get power metrics sample delta over duration (use measured elapsed time)"""
         if not self._subscription:
             raise IOReportError("Subscription not created")
         
-        # Get first sample
+        start = time.time()
         sample1 = self._ioreport.IOReportCreateSamples(
             self._subscription, self._channels, None
         )
         
-        # Wait for duration
         time.sleep(duration_ms / 1000.0)
         
-        # Get second sample
         sample2 = self._ioreport.IOReportCreateSamples(
             self._subscription, self._channels, None
         )
+        elapsed_ms = max(1, int((time.time() - start) * 1000))
         
-        # Calculate delta
         delta = self._ioreport.IOReportCreateSamplesDelta(sample1, sample2, None)
         
-        # Parse delta to extract power metrics
-        metrics = self._parse_sample(delta, duration_ms)
+        metrics = self._parse_sample(delta, elapsed_ms)
         
-        # Cleanup
         self._core_foundation.CFRelease(sample1)
         self._core_foundation.CFRelease(sample2)
         self._core_foundation.CFRelease(delta)
