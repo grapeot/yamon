@@ -70,8 +70,14 @@ cd frontend
 npm install
 ```
 
-2. Start development server:
+2. Start development server (from project root):
 ```bash
+./run_frontend.sh
+```
+
+Or manually:
+```bash
+cd frontend
 npm run dev
 ```
 
@@ -79,25 +85,29 @@ The frontend will be available at http://localhost:5173
 
 ## Production Build
 
-1. Build frontend:
+1. Build frontend and copy to backend:
+```bash
+./build_frontend.sh
+```
+
+Or manually:
 ```bash
 cd frontend
 npm run build
+cd ..
+rm -rf backend/static
+mkdir -p backend/static
+cp -r frontend/dist/* backend/static/
 ```
 
-2. Copy static files to backend:
-```bash
-./scripts/build.sh
-```
-
-3. Start production server (from project root):
-```bash
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
-```
-
-Or use the convenience script:
+2. Start production server (from project root):
 ```bash
 ./run_backend.sh 8000
+```
+
+Or manually:
+```bash
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
 The application will be available at http://localhost:8000
