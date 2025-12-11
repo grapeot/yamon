@@ -47,10 +47,14 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Start backend server:
+3. Start backend server (from project root):
 ```bash
-cd backend
-python -m uvicorn main:app --reload --port 8000
+python -m uvicorn backend.main:app --reload --port 8000
+```
+
+Or use the convenience script:
+```bash
+./run_backend.sh 8000
 ```
 
 The API will be available at:
@@ -86,10 +90,14 @@ npm run build
 ./scripts/build.sh
 ```
 
-3. Start production server:
+3. Start production server (from project root):
 ```bash
-cd backend
-python -m uvicorn main:app --host 0.0.0.0 --port 8000
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+Or use the convenience script:
+```bash
+./run_backend.sh 8000
 ```
 
 The application will be available at http://localhost:8000

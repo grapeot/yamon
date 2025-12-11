@@ -1,8 +1,12 @@
 """Metrics API endpoints"""
 
 from fastapi import APIRouter
-from backend.collectors.collector import MetricsCollector
-from backend.history import MetricsHistory
+try:
+    from backend.collectors.collector import MetricsCollector
+    from backend.history import MetricsHistory
+except ImportError:
+    from collectors.collector import MetricsCollector
+    from history import MetricsHistory
 from typing import Optional
 
 router = APIRouter()

@@ -1,8 +1,12 @@
 """WebSocket API for real-time metrics"""
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from backend.collectors.collector import MetricsCollector
-from backend.history import MetricsHistory
+try:
+    from backend.collectors.collector import MetricsCollector
+    from backend.history import MetricsHistory
+except ImportError:
+    from collectors.collector import MetricsCollector
+    from history import MetricsHistory
 import asyncio
 import json
 

@@ -7,7 +7,12 @@ from fastapi.responses import FileResponse
 from pathlib import Path
 import os
 
-from backend.api import metrics, websocket
+# Use relative imports when running from backend directory
+# Use absolute imports when running from project root
+try:
+    from backend.api import metrics, websocket
+except ImportError:
+    from api import metrics, websocket
 
 app = FastAPI(title="Yamon API", version="1.0.0")
 
@@ -52,4 +57,3 @@ async def root():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
