@@ -676,27 +676,20 @@ class AppleAPICollector:
                             print(f"[DEBUG] Using fallback: E-cores={len(e_core_indices)}, P-cores={len(p_core_indices)}", file=sys.stderr)
                     
                     # Extract frequencies
+                    import sys
                     if e_core_indices:
                         e_freqs = [freq for _, freq in e_core_indices]
                         metrics.ecpu_freq_mhz = max(e_freqs)  # Use max E-core freq
-                        if self._debug:
-                            import sys
-                            print(f"[DEBUG] E-core frequencies: {e_freqs}, using max: {metrics.ecpu_freq_mhz} MHz", file=sys.stderr)
+                        print(f"[DEBUG] E-core frequencies: {e_freqs}, using max: {metrics.ecpu_freq_mhz} MHz", file=sys.stderr)
                     else:
-                        if self._debug:
-                            import sys
-                            print("[DEBUG] No E-core indices found", file=sys.stderr)
+                        print("[DEBUG] No E-core indices found", file=sys.stderr)
                     
                     if p_core_indices:
                         p_freqs = [freq for _, freq in p_core_indices]
                         metrics.pcpu_freq_mhz = max(p_freqs)  # Use max P-core freq
-                        if self._debug:
-                            import sys
-                            print(f"[DEBUG] P-core frequencies: {p_freqs}, using max: {metrics.pcpu_freq_mhz} MHz", file=sys.stderr)
+                        print(f"[DEBUG] P-core frequencies: {p_freqs}, using max: {metrics.pcpu_freq_mhz} MHz", file=sys.stderr)
                     else:
-                        if self._debug:
-                            import sys
-                            print("[DEBUG] No P-core indices found", file=sys.stderr)
+                        print("[DEBUG] No P-core indices found", file=sys.stderr)
             except (ValueError, IndexError) as e:
                 if self._debug:
                     import sys
