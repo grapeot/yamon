@@ -55,7 +55,7 @@ export function PowerChart({
 
     chartInstance.current.setOption({
       title: {
-        text: `Power: CPU: ${(cpuPower || 0).toFixed(2)}W, GPU: ${(gpuPower || 0).toFixed(2)}W, ANE: ${(anePower || 0).toFixed(2)}W, System: ${(systemPower || 0).toFixed(2)}W`,
+        text: `Power: CPU: ${(cpuPower || 0).toFixed(2)}W, GPU: ${(gpuPower || 0).toFixed(2)}W, ANE: ${(anePower || 0).toFixed(2)}W, System: ${systemPower !== null ? systemPower.toFixed(2) + 'W' : 'N/A'}`,
         left: 'center',
         top: 10,
         textStyle: { fontSize: 12, color: '#fff' },
