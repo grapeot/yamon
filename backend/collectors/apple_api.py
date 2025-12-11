@@ -392,6 +392,61 @@ class AppleAPICollector:
         
         return metrics
     
+    def _get_gpu_usage_via_ioreg(self) -> Optional[float]:
+        """Try to get GPU usage percentage via ioreg"""
+        try:
+            # Try to query GPU performance controller
+            # This is a best-effort attempt - may not work on all systems
+            result = subprocess.run(
+                ['ioreg', '-r', '-d', '1', '-w', '0', '-c', 'IOAccelerator'],
+                capture_output=True,
+                timeout=2,
+                text=True
+            )
+            
+            if result.returncode == 0 and result.stdout:
+                # Look for GPU utilization patterns in ioreg output
+                # This is system-dependent and may need adjustment
+                utilization_match = re.search(
+                    r'utilization[:\s]+(\d+)',
+                    result.stdout,
+                    re.IGNORECASE
+                )
+                if utilization_match:
+                    try:
+                        return float(utilization_match.group(1))
+                    except (ValueError, IndexError):
+                        pass
+            
+            # Alternative: Try querying AGXAccelerator (Apple Silicon GPU)
+            result = subprocess.run(
+                ['ioreg', '-r', '-d', '1', '-w', '0', '-c', 'AGXAccelerator'],
+                capture_output=True,
+                timeout=2,
+                text=True
+            )
+            
+            if result.returncode == 0 and result.stdout:
+                # Look for various GPU metrics
+                patterns = [
+                    r'utilization[:\s]+(\d+)',
+                    r'gpu.*?usage[:\s]+(\d+)',
+                    r'active.*?percent[:\s]+(\d+)',
+                ]
+                for pattern in patterns:
+                    match = re.search(pattern, result.stdout, re.IGNORECASE)
+                    if match:
+                        try:
+                            return float(match.group(1))
+                        except (ValueError, IndexError):
+                            continue
+            
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
+            # ioreg may not be available or may fail
+            pass
+        
+        return None
+    
     def is_available(self) -> bool:
         """Check if Apple API collection is available"""
         return self._is_apple_silicon
