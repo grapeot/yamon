@@ -838,9 +838,12 @@ class AppleAPICollector:
                 try:
                     metrics.ane_usage = float(match.group(1))
                     break
-                except (ValueError, IndexError):
-                    continue
+                    except (ValueError, IndexError):
+                        continue
         
+        import sys
+        print(f"[DEBUG] _parse_powermetrics_text returning: pcpu_freq_mhz={metrics.pcpu_freq_mhz}, ecpu_freq_mhz={metrics.ecpu_freq_mhz}", file=sys.stderr)
+        sys.stderr.flush()
         return metrics
     
     def _get_gpu_usage_via_ioreg(self) -> Optional[float]:
