@@ -589,11 +589,12 @@ class AppleAPICollector:
         cpu_freq_pattern = re.compile(r'CPU\s+(\d+)\s+frequency[:\s]+([\d.]+)\s*MHz', re.IGNORECASE)
         cpu_freq_data = cpu_freq_pattern.findall(text)
         
-        if self._debug:
-            import sys
-            print(f"[DEBUG] Found {len(cpu_freq_data)} CPU frequency entries", file=sys.stderr)
-            if cpu_freq_data:
-                print(f"[DEBUG] Sample CPU frequencies: {cpu_freq_data[:5]}", file=sys.stderr)
+        import sys
+        print(f"[DEBUG] Found {len(cpu_freq_data)} CPU frequency entries", file=sys.stderr)
+        if cpu_freq_data:
+            print(f"[DEBUG] Sample CPU frequencies: {cpu_freq_data[:5]}", file=sys.stderr)
+        else:
+            print(f"[DEBUG] No CPU frequency data found in powermetrics output", file=sys.stderr)
         
         if cpu_freq_data:
             try:
