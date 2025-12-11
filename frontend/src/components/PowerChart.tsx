@@ -9,16 +9,18 @@ interface PowerChartProps {
   cpuHistory: number[]
   gpuHistory: number[]
   aneHistory: number[]
+  systemHistory: number[]
 }
 
-export function PowerChart({ 
-  cpuPower, 
-  gpuPower, 
-  anePower, 
+export function PowerChart({
+  cpuPower,
+  gpuPower,
+  anePower,
   systemPower,
   cpuHistory,
   gpuHistory,
   aneHistory,
+  systemHistory,
 }: PowerChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
@@ -45,13 +47,14 @@ export function PowerChart({
     const updatedCpuHistory = [...cpuHistory, cpuPower || 0].slice(-120)
     const updatedGpuHistory = [...gpuHistory, gpuPower || 0].slice(-120)
     const updatedAneHistory = [...aneHistory, anePower || 0].slice(-120)
+    const updatedSystemHistory = [...systemHistory, systemPower || 0].slice(-120)
 
-    // 计算总功耗历史（用于堆叠）
-    const totalHistory = updatedCpuHistory.map((cpu, i) => 
-      cpu + updatedGpuHistory[i] + updatedAneHistory[i]
-    )
-
-    const maxPower = Math.max(...totalHistory, systemPower || 0, 1)
+    // Calculate "Other" power (System - Components)
+    // If System < Components (e.g. measurement lag), floor at 0
+    const otherHistory = updatedSystemHistory.map((sys, i) => {
+      const components = updatedCpuHistory[i] + updatedGpuHistory[i] + updatedAneHistory[i]
+      return Math.max(0, sys - components)
+    })
 
     chartInstance.current.setOption({
       title: {
@@ -73,7 +76,7 @@ export function PowerChart({
         },
       },
       legend: {
-        data: ['CPU', 'GPU', 'ANE'],
+        data: ['CPU', 'GPU', 'ANE', 'Other'],
         top: '25%',
         textStyle: { color: '#aaa', fontSize: 14 },
       },
@@ -133,9 +136,20 @@ export function PowerChart({
           itemStyle: { color: '#3ba272' },
           data: updatedAneHistory,
         },
+        {
+          name: 'Other',
+          type: 'line',
+          stack: 'Power',
+          smooth: false,
+          showSymbol: false,
+          areaStyle: { opacity: 0.5 },
+          lineStyle: { color: '#91cc75' },
+          itemStyle: { color: '#91cc75' },
+          data: otherHistory,
+        },
       ],
     })
-  }, [cpuPower, gpuPower, anePower, systemPower, cpuHistory, gpuHistory, aneHistory])
+  }, [cpuPower, gpuPower, anePower, systemPower, cpuHistory, gpuHistory, aneHistory, systemHistory])
 
   return (
     <div className="chart-container">

@@ -102,7 +102,7 @@ function App() {
         ) : (
           <div className="metrics-grid">
             <div className="metric-section">
-              <CpuChart 
+              <CpuChart
                 cpuPercent={typedMetrics.cpu_percent}
                 cpuPerCore={typedMetrics.cpu_per_core}
                 history={history.cpu_percent}
@@ -111,7 +111,7 @@ function App() {
             </div>
 
             <div className="metric-section">
-              <MemoryChart 
+              <MemoryChart
                 memoryPercent={typedMetrics.memory_percent}
                 memoryUsed={typedMetrics.memory_used}
                 memoryTotal={typedMetrics.memory_total}
@@ -120,21 +120,21 @@ function App() {
             </div>
 
             <div className="metric-section">
-              <GpuChart 
+              <GpuChart
                 gpuUsage={typedMetrics.gpu_usage}
                 history={history.gpu_usage}
               />
             </div>
 
             <div className="metric-section">
-              <AneChart 
+              <AneChart
                 aneUsage={typedMetrics.ane_usage}
                 history={history.ane_usage}
               />
             </div>
 
             <div className="metric-section">
-              <NetworkChart 
+              <NetworkChart
                 sentRate={typedMetrics.network_sent_rate}
                 recvRate={typedMetrics.network_recv_rate}
                 sentHistory={history.network_sent_rate}
@@ -143,7 +143,7 @@ function App() {
             </div>
 
             <div className="metric-section">
-              <PowerChart 
+              <PowerChart
                 cpuPower={typedMetrics.cpu_power}
                 gpuPower={typedMetrics.gpu_power}
                 anePower={typedMetrics.ane_power}
@@ -151,6 +151,7 @@ function App() {
                 cpuHistory={history.cpu_power}
                 gpuHistory={history.gpu_power}
                 aneHistory={history.ane_power}
+                systemHistory={history.system_power}
               />
             </div>
           </div>
