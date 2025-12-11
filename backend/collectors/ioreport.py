@@ -334,6 +334,7 @@ class IOReport:
             'ane_power': 0.0,
             'dram_power': 0.0,
             'gpu_sram_power': 0.0,
+            'system_power': 0.0,
         }
         
         # Get IOReportChannels array
@@ -380,6 +381,13 @@ class IOReport:
                     metrics['dram_power'] += watts
                 elif channel_name.startswith("GPU SRAM"):
                     metrics['gpu_sram_power'] += watts
+                elif "System" in channel_name or "Total" in channel_name or "All" in channel_name:
+                    # Some systems expose total/soc power channel
+                    metrics['system_power'] += watts
+        
+        # If system_power not provided, approximate as sum of components
+        if metrics['system_power'] <= 0.0:
+            metrics['system_power'] = metrics['cpu_power'] + metrics['gpu_power'] + metrics['ane_power'] + metrics['dram_power'] + metrics['gpu_sram_power']
         
         return metrics
     

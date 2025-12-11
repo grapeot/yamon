@@ -169,6 +169,10 @@ class AppleAPICollector:
             metrics.gpu_power = metrics_dict.get('gpu_power', 0.0)
             metrics.ane_power = metrics_dict.get('ane_power', 0.0)
             metrics.dram_power = metrics_dict.get('dram_power', 0.0)
+            # Approximate system power from IOReport (sum or provided)
+            sys_power = metrics_dict.get('system_power')
+            if sys_power is not None:
+                metrics.system_power = sys_power
             
             # Try to get system power via SMC API
             if self._smc:
