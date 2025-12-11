@@ -453,29 +453,28 @@ class AppleAPICollector:
         
         # Try to extract GPU usage (percentage)
         # powermetrics outputs GPU usage in the "**** GPU usage ****" section
-        # Format: "GPU idle residency: X.XX%"
-        # GPU usage = 100% - GPU idle residency
-        # Or use "GPU HW active residency: X.XX%" directly
+        # Format: "GPU HW active residency: X.XX%" (preferred, direct value)
+        # Or "GPU idle residency: X.XX%" (calculate: 100% - idle)
         
-        # First, try to find GPU idle residency and calculate usage
-        gpu_idle_match = re.search(r'GPU idle residency[:\s]+([\d.]+)\s*%', text, re.IGNORECASE | re.MULTILINE)
-        if gpu_idle_match:
+        # First, try to find GPU HW active residency (preferred, more direct)
+        gpu_active_match = re.search(r'GPU HW active residency[:\s]+([\d.]+)\s*%', text, re.IGNORECASE | re.MULTILINE)
+        if gpu_active_match:
             try:
-                idle_percent = float(gpu_idle_match.group(1))
-                metrics.gpu_usage = 100.0 - idle_percent
+                metrics.gpu_usage = float(gpu_active_match.group(1))
                 import sys
-                print(f"[DEBUG] Found GPU usage via idle residency: {metrics.gpu_usage}% (idle: {idle_percent}%)", file=sys.stderr)
+                print(f"[DEBUG] Found GPU usage via HW active residency: {metrics.gpu_usage}%", file=sys.stderr)
             except (ValueError, IndexError):
                 pass
         
-        # If not found via idle residency, try GPU HW active residency
+        # Fallback: try GPU idle residency and calculate usage
         if metrics.gpu_usage is None:
-            gpu_active_match = re.search(r'GPU HW active residency[:\s]+([\d.]+)\s*%', text, re.IGNORECASE | re.MULTILINE)
-            if gpu_active_match:
+            gpu_idle_match = re.search(r'GPU idle residency[:\s]+([\d.]+)\s*%', text, re.IGNORECASE | re.MULTILINE)
+            if gpu_idle_match:
                 try:
-                    metrics.gpu_usage = float(gpu_active_match.group(1))
+                    idle_percent = float(gpu_idle_match.group(1))
+                    metrics.gpu_usage = 100.0 - idle_percent
                     import sys
-                    print(f"[DEBUG] Found GPU usage via HW active residency: {metrics.gpu_usage}%", file=sys.stderr)
+                    print(f"[DEBUG] Found GPU usage via idle residency: {metrics.gpu_usage}% (idle: {idle_percent}%)", file=sys.stderr)
                 except (ValueError, IndexError):
                     pass
         
