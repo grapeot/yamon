@@ -43,7 +43,6 @@ class IOReport:
         self._iokit = None
         self._subscription = None
         self._channels = None
-        self._string_buffers = []  # Keep references to prevent garbage collection
         
         if self._is_macos:
             self._init_frameworks()
@@ -92,6 +91,13 @@ class IOReport:
             ctypes.c_uint32, ctypes.c_uint8, CFAllocatorRef
         ]
         self._core_foundation.CFStringCreateWithBytesNoCopy.restype = CFStringRef
+        
+        # CFStringCreateWithBytes (makes an internal copy; safer for alignment)
+        self._core_foundation.CFStringCreateWithBytes.argtypes = [
+            CFAllocatorRef, ctypes.POINTER(ctypes.c_uint8), ctypes.c_long,
+            ctypes.c_uint32, ctypes.c_uint8
+        ]
+        self._core_foundation.CFStringCreateWithBytes.restype = CFStringRef
         
         # CFStringGetCString
         self._core_foundation.CFStringGetCString.argtypes = [
@@ -195,22 +201,17 @@ class IOReport:
         self._ioreport.IOReportStateGetResidency.restype = ctypes.c_int64
     
     def _cf_string_from_str(self, s: str) -> CFStringRef:
-        """Create CFString from Python string"""
+        """Create CFString from Python string (copying into CF-managed buffer)"""
         if not s:
             return None
         
         bytes_data = s.encode('utf-8')
-        # Create a properly aligned buffer and keep reference to prevent GC
-        buf = (ctypes.c_uint8 * len(bytes_data))(*bytes_data)
-        # Store buffer reference to prevent garbage collection
-        self._string_buffers.append(buf)
-        return self._core_foundation.CFStringCreateWithBytesNoCopy(
+        return self._core_foundation.CFStringCreateWithBytes(
             kCFAllocatorDefault,
-            ctypes.cast(buf, ctypes.POINTER(ctypes.c_uint8)),
+            (ctypes.c_uint8 * len(bytes_data))(*bytes_data),
             len(bytes_data),
             0x08000100,  # kCFStringEncodingUTF8
             0,
-            kCFAllocatorNull
         )
     
     def _cf_string_to_str(self, cf_str: CFStringRef) -> str:
@@ -397,9 +398,6 @@ class IOReport:
             # Note: IOReport subscription cleanup may need special handling
             # For now, we'll rely on Python's garbage collection
             self._subscription = None
-        
-        # Clear string buffers (CFStrings should be released before this)
-        self._string_buffers.clear()
     
     def __del__(self):
         try:
