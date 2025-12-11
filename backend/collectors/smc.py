@@ -111,11 +111,29 @@ class SMC:
             self._io_kit = None
     
     def _open_smc(self):
-        """Open connection to AppleSMC service"""
+        """Open connection to AppleSMC service (like macmon does)"""
         if not self._io_kit:
             return False
         
         try:
+            # Need to add IOServiceGetMatchingServices and IOIteratorNext
+            # First, define missing functions
+            self._io_kit.IOServiceGetMatchingServices.argtypes = [
+                ctypes.c_uint,  # masterPort
+                ctypes.c_void_p,  # matching
+                ctypes.POINTER(ctypes.c_uint),  # iterator
+            ]
+            self._io_kit.IOServiceGetMatchingServices.restype = ctypes.c_int
+            
+            self._io_kit.IOIteratorNext.argtypes = [ctypes.c_uint]
+            self._io_kit.IOIteratorNext.restype = ctypes.c_uint
+            
+            self._io_kit.IORegistryEntryGetName.argtypes = [
+                ctypes.c_uint,  # entry
+                ctypes.POINTER(ctypes.c_char),  # name
+            ]
+            self._io_kit.IORegistryEntryGetName.restype = ctypes.c_int
+            
             # Get matching dictionary for AppleSMC
             matching = self._io_kit.IOServiceMatching(b'AppleSMC')
             if not matching:
@@ -124,26 +142,64 @@ class SMC:
                     print("[DEBUG] Failed to get AppleSMC matching dictionary", file=sys.stderr)
                 return False
             
-            # Get the service
-            service = self._io_kit.IOServiceGetMatchingService(
+            # Get iterator for services
+            iterator = ctypes.c_uint()
+            result = self._io_kit.IOServiceGetMatchingServices(
                 self._kIOMasterPortDefault,
-                matching
+                matching,
+                ctypes.byref(iterator)
             )
             
-            if service == 0:
+            if result != 0:
                 if self._debug:
                     import sys
-                    print("[DEBUG] Failed to get AppleSMC service", file=sys.stderr)
+                    print(f"[DEBUG] Failed to get AppleSMC services iterator: {result}", file=sys.stderr)
                 return False
             
-            # Open connection
-            conn = ctypes.c_uint()
-            result = self._io_kit.IOServiceOpen(
-                service,
-                0,  # self task
-                self._kIOServiceOpen,
-                ctypes.byref(conn)
-            )
+            # Iterate through services to find AppleSMCKeysEndpoint
+            found = False
+            while True:
+                service = self._io_kit.IOIteratorNext(iterator.value)
+                if service == 0:
+                    break
+                
+                # Get service name
+                name_buf = ctypes.create_string_buffer(128)
+                if self._io_kit.IORegistryEntryGetName(service, name_buf) == 0:
+                    name = name_buf.value.decode('utf-8')
+                    if name == "AppleSMCKeysEndpoint":
+                        # Found the right service, open connection
+                        conn = ctypes.c_uint()
+                        # Use mach_task_self() equivalent (0 for current task)
+                        result = self._io_kit.IOServiceOpen(
+                            service,
+                            0,  # mach_task_self() equivalent
+                            0,  # type (0 for AppleSMCKeysEndpoint)
+                            ctypes.byref(conn)
+                        )
+                        
+                        if result == 0:  # KERN_SUCCESS
+                            self._conn = conn.value
+                            found = True
+                            if self._debug:
+                                import sys
+                                print(f"[DEBUG] Successfully opened SMC connection: {self._conn}", file=sys.stderr)
+                        else:
+                            if self._debug:
+                                import sys
+                                error_hex = hex(result)
+                                if result == 0xE00002C2:
+                                    print(f"[DEBUG] SMC IOServiceOpen failed: Not privileged, error: {error_hex}", file=sys.stderr)
+                                else:
+                                    print(f"[DEBUG] SMC IOServiceOpen failed, error: {error_hex}", file=sys.stderr)
+                
+                # Release service
+                self._io_kit.IOObjectRelease(service)
+            
+            # Release iterator
+            self._io_kit.IOObjectRelease(iterator.value)
+            
+            return found
             
             if result == 0:  # KERN_SUCCESS
                 self._conn = conn.value

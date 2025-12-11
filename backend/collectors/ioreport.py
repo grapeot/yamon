@@ -199,9 +199,12 @@ class IOReport:
             return None
         
         bytes_data = s.encode('utf-8')
+        # Create a properly aligned buffer - use c_char_p for string data
+        # Store the buffer to prevent garbage collection
+        buf = ctypes.create_string_buffer(bytes_data)
         return self._core_foundation.CFStringCreateWithBytesNoCopy(
             kCFAllocatorDefault,
-            (ctypes.c_uint8 * len(bytes_data)).from_buffer(bytearray(bytes_data)),
+            ctypes.cast(buf, ctypes.POINTER(ctypes.c_uint8)),
             len(bytes_data),
             0x08000100,  # kCFStringEncodingUTF8
             0,
@@ -248,7 +251,9 @@ class IOReport:
                 if chan:
                     channel_dicts.append(chan)
                 
-                self._core_foundation.CFRelease(group_str)
+                # Release CFStrings (they're temporary)
+                if group_str:
+                    self._core_foundation.CFRelease(group_str)
                 if subgroup_str:
                     self._core_foundation.CFRelease(subgroup_str)
             
