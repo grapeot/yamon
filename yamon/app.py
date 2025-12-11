@@ -1,7 +1,7 @@
 """Main TUI application"""
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, ScrollableContainer
 from textual.widgets import Static, Header, Footer
 from textual import work
 from textual.timer import Timer
@@ -106,7 +106,7 @@ class YamonApp(App):
         """Create child widgets"""
         yield Header(show_clock=True)
         
-        with Container(id="main-container"):
+        with ScrollableContainer(id="main-container"):
             # Row 1: CPU Usage (left) and Power (right)
             with Horizontal():
                 with Vertical(id="row1-col1"):
