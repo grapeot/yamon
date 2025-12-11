@@ -91,7 +91,8 @@ class AppleAPICollector:
                 '-i', '1000',  # 1 second interval
                 '-n', '1',     # 1 sample
                 '--samplers', 'cpu_power,gpu_power,ane_power',
-                '--show-process-gpu'  # Show per-process GPU time (may help calculate usage)
+                '--show-process-gpu',  # Show per-process GPU time (may help calculate usage)
+                '--show-extra-power-info'  # Show additional power info (may include system total)
                 # Use default text format - plist parsing is complex
             ]
             
