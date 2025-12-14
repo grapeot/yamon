@@ -105,16 +105,28 @@ async def websocket_metrics(websocket: WebSocket):
             # cpu_p_percent = (P核总算力) / (CPU最高算力) × 100%
             # cpu_e_percent = (E核总算力) / (CPU最高算力) × 100%
             
-            # 对于 Apple Silicon，P-core 最大频率通常在 3000-4000 MHz，E-core 在 2000-2500 MHz
-            pcpu_max_freq_mhz = 4000.0  # 默认最大 P-core 频率
-            ecpu_max_freq_mhz = 2500.0  # 默认最大 E-core 频率
+            # 使用从频率分布提取的最大频率，或已知规格，或估算值
+            pcpu_max_freq_mhz = None
+            ecpu_max_freq_mhz = None
             
-            # 如果知道实际频率，使用实际频率估算最大值；否则使用默认值
-            if metrics.pcpu_freq_mhz is not None:
-                # 如果当前频率接近最大值，使用当前频率作为参考
+            # 优先使用从频率分布提取的最大频率
+            if metrics.pcpu_max_freq_mhz is not None:
+                pcpu_max_freq_mhz = metrics.pcpu_max_freq_mhz
+            elif metrics.pcpu_freq_mhz is not None:
+                # Fallback: 使用当前频率估算（不准确，但比默认值好）
                 pcpu_max_freq_mhz = max(metrics.pcpu_freq_mhz * 1.2, 3000.0)
-            if metrics.ecpu_freq_mhz is not None:
+            else:
+                # 最后 fallback: 使用默认值
+                pcpu_max_freq_mhz = 4000.0
+            
+            if metrics.ecpu_max_freq_mhz is not None:
+                ecpu_max_freq_mhz = metrics.ecpu_max_freq_mhz
+            elif metrics.ecpu_freq_mhz is not None:
+                # Fallback: 使用当前频率估算
                 ecpu_max_freq_mhz = max(metrics.ecpu_freq_mhz * 1.2, 2000.0)
+            else:
+                # 最后 fallback: 使用默认值
+                ecpu_max_freq_mhz = 2500.0
             
             # 计算 CPU 最高算力（所有核心都在最大频率下的总算力）
             cpu_max_performance = (p_core_count * pcpu_max_freq_mhz) + (e_core_count * ecpu_max_freq_mhz)

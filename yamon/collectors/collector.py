@@ -36,8 +36,10 @@ class SystemMetrics:
     ane_power: Optional[float] = None  # watts
     dram_power: Optional[float] = None  # watts
     system_power: Optional[float] = None  # watts
-    pcpu_freq_mhz: Optional[float] = None  # P-core frequency in MHz
-    ecpu_freq_mhz: Optional[float] = None  # E-core frequency in MHz
+    pcpu_freq_mhz: Optional[float] = None  # P-core current frequency in MHz
+    ecpu_freq_mhz: Optional[float] = None  # E-core current frequency in MHz
+    pcpu_max_freq_mhz: Optional[float] = None  # P-core maximum frequency in MHz
+    ecpu_max_freq_mhz: Optional[float] = None  # E-core maximum frequency in MHz
     gpu_usage: Optional[float] = None  # percentage
     gpu_freq_mhz: Optional[float] = None  # MHz
     ane_usage: Optional[float] = None  # percentage
@@ -130,6 +132,8 @@ class MetricsCollector:
             system_power=apple_metrics.system_power if apple_metrics else None,
             pcpu_freq_mhz=apple_metrics.pcpu_freq_mhz if apple_metrics else None,
             ecpu_freq_mhz=apple_metrics.ecpu_freq_mhz if apple_metrics else None,
+            pcpu_max_freq_mhz=apple_metrics.pcpu_max_freq_mhz if apple_metrics else None,
+            ecpu_max_freq_mhz=apple_metrics.ecpu_max_freq_mhz if apple_metrics else None,
             gpu_usage=apple_metrics.gpu_usage if apple_metrics else None,
             gpu_freq_mhz=apple_metrics.gpu_freq_mhz if apple_metrics else None,
             ane_usage=apple_metrics.ane_usage if apple_metrics else None,

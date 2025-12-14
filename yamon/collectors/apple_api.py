@@ -24,8 +24,10 @@ class AppleMetrics:
     system_power: Optional[float] = None  # None if not available (requires SMC/IOReport for accurate total)
     
     # CPU frequencies
-    pcpu_freq_mhz: Optional[float] = None  # P-core frequency in MHz
-    ecpu_freq_mhz: Optional[float] = None  # E-core frequency in MHz
+    pcpu_freq_mhz: Optional[float] = None  # P-core current frequency in MHz
+    ecpu_freq_mhz: Optional[float] = None  # E-core current frequency in MHz
+    pcpu_max_freq_mhz: Optional[float] = None  # P-core maximum frequency in MHz (from frequency distribution)
+    ecpu_max_freq_mhz: Optional[float] = None  # E-core maximum frequency in MHz (from frequency distribution)
     
     # GPU
     gpu_usage: Optional[float] = None  # percentage, None if not available
@@ -594,6 +596,73 @@ class AppleAPICollector:
                         metrics.pcpu_freq_mhz = max(p_freqs)  # Use max P-core freq
             except (ValueError, IndexError):
                 pass
+        
+        # Extract CPU maximum frequencies from frequency distributions
+        # Format: "P0-Cluster HW active residency: X% (1260 MHz: .65% ... 4512 MHz: 1.6%)"
+        # Format: "E-Cluster HW active residency: X% (1020 MHz: 36% ... 2592 MHz: 3.4%)"
+        
+        # Extract P-Cluster maximum frequency from frequency distribution
+        p_cluster_match = re.search(r'P\d*-Cluster HW active residency[:\s]+[\d.]+%\s*\(([^)]+)\)', text, re.IGNORECASE)
+        if p_cluster_match:
+            freq_matches = re.findall(r'(\d+)\s*MHz', p_cluster_match.group(1))
+            if freq_matches:
+                try:
+                    p_freqs = [int(f) for f in freq_matches]
+                    metrics.pcpu_max_freq_mhz = max(p_freqs) if p_freqs else None
+                except (ValueError, IndexError):
+                    pass
+        
+        # Extract E-Cluster maximum frequency from frequency distribution
+        e_cluster_match = re.search(r'E-Cluster HW active residency[:\s]+[\d.]+%\s*\(([^)]+)\)', text, re.IGNORECASE)
+        if e_cluster_match:
+            freq_matches = re.findall(r'(\d+)\s*MHz', e_cluster_match.group(1))
+            if freq_matches:
+                try:
+                    e_freqs = [int(f) for f in freq_matches]
+                    metrics.ecpu_max_freq_mhz = max(e_freqs) if e_freqs else None
+                except (ValueError, IndexError):
+                    pass
+        
+        # Fallback to known specifications if max frequencies not found
+        if metrics.pcpu_max_freq_mhz is None or metrics.ecpu_max_freq_mhz is None:
+            # Try to detect CPU model from system
+            cpu_brand = None
+            try:
+                result = subprocess.run(
+                    ['sysctl', 'machdep.cpu.brand_string'],
+                    capture_output=True,
+                    text=True,
+                    timeout=2
+                )
+                if result.returncode == 0:
+                    cpu_brand = result.stdout.strip()
+            except Exception:
+                pass
+            
+            # Known Apple Silicon maximum frequencies
+            KNOWN_MAX_FREQS = {
+                'M1': {'p_max': 3200, 'e_max': 2000},
+                'M1 Pro': {'p_max': 3200, 'e_max': 2000},
+                'M1 Max': {'p_max': 3200, 'e_max': 2000},
+                'M2': {'p_max': 3500, 'e_max': 2400},
+                'M2 Pro': {'p_max': 3500, 'e_max': 2400},
+                'M2 Max': {'p_max': 3500, 'e_max': 2400},
+                'M3': {'p_max': 4000, 'e_max': 2500},
+                'M3 Pro': {'p_max': 4000, 'e_max': 2500},
+                'M3 Max': {'p_max': 4000, 'e_max': 2500},
+                'M4': {'p_max': 4460, 'e_max': 2890},
+                'M4 Pro': {'p_max': 4460, 'e_max': 2890},
+                'M4 Max': {'p_max': 4460, 'e_max': 2890},  # Public spec, but powermetrics shows 4512/2592
+            }
+            
+            if cpu_brand:
+                for chip_name, freqs in KNOWN_MAX_FREQS.items():
+                    if chip_name in cpu_brand:
+                        if metrics.pcpu_max_freq_mhz is None:
+                            metrics.pcpu_max_freq_mhz = freqs['p_max']
+                        if metrics.ecpu_max_freq_mhz is None:
+                            metrics.ecpu_max_freq_mhz = freqs['e_max']
+                        break
         
         # Try to extract GPU frequency if available
         gpu_freq_match = re.search(r'GPU.*?frequency[:\s]+([\d.]+)\s*MHz', text, re.IGNORECASE)
