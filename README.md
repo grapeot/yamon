@@ -58,26 +58,52 @@ pip install -e .
 
 ## 📸 Usage
 
-### Production Mode (Single Server)
-The most convenient way to run Yamon locally. The backend serves both the API and the compiled frontend.
+### Using the Installed Package (Recommended)
+
+After installing from PyPI or source, simply run:
 
 ```bash
-# 1. Build Frontend
+yamon
+```
+
+Or with custom options:
+
+```bash
+yamon --host 0.0.0.0 --port 8000 --reload
+```
+
+### Development Mode (From Source)
+
+If you're developing from source:
+
+```bash
+# 1. Install in development mode
+pip install -e .
+
+# 2. Build Frontend (for production mode)
 ./build_frontend.sh
 
-# 2. Run Backend
+# 3. Run Backend
 ./run_backend.sh
 ```
-Visit **http://localhost:8000** to access the dashboard.
+
+Or run the installed command:
+
+```bash
+yamon --reload
+```
 
 ### Development Mode (Separate Frontend & Backend)
 For contributors who want to modify the frontend code.
 
 ```bash
-# 1. Run Backend (Collects data)
+# 1. Install in development mode
+pip install -e .
+
+# 2. Run Backend (Collects data)
 ./run_backend.sh
 
-# 2. Run Frontend (Hot-reload dev server)
+# 3. Run Frontend (Hot-reload dev server)
 ./run_frontend.sh
 ```
 Visit **http://localhost:5173** for the development server.
