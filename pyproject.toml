@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "yamon"
-version = "0.1.1"
+version = "0.1.2"
 description = "Visually pleasing, deep system monitoring for macOS"
 readme = "README.md"
 requires-python = ">=3.8"
