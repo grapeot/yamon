@@ -23,6 +23,10 @@ class AppleMetrics:
     dram_power: float = 0.0
     system_power: Optional[float] = None  # None if not available (requires SMC/IOReport for accurate total)
     
+    # CPU frequencies
+    pcpu_freq_mhz: Optional[float] = None  # P-core frequency in MHz
+    ecpu_freq_mhz: Optional[float] = None  # E-core frequency in MHz
+    
     # GPU
     gpu_usage: Optional[float] = None  # percentage, None if not available
     gpu_freq_mhz: Optional[float] = None  # MHz, None if not available
@@ -55,26 +59,21 @@ class AppleAPICollector:
         # IOReport should provide CPU/GPU/ANE power, and SMC is mainly for system total power
         try:
             try:
-                from backend.collectors.smc import SMC
+                from yamon.collectors.smc import SMC
             except ImportError:
                 from collectors.smc import SMC
             self._smc = SMC(debug=self._debug)
             # Check if connection was actually established
             if not self._smc._conn:
-                if self._debug:
-                    import sys
-                    print("[DEBUG] SMC connection not established, system power may show as N/A", file=sys.stderr)
+                pass
         except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to initialize SMC: {e}", file=sys.stderr)
             self._smc = None
     
     def _init_ioreport(self):
         """Initialize IOReport API for power metrics (no sudo required)"""
         try:
             try:
-                from backend.collectors.ioreport import IOReport, IOReportError
+                from yamon.collectors.ioreport import IOReport, IOReportError
             except ImportError:
                 from collectors.ioreport import IOReport, IOReportError
             
@@ -85,20 +84,10 @@ class AppleAPICollector:
             ]
             self._ioreport.create_subscription(channels)
             self._ioreport_available = True
-            
-            if self._debug:
-                import sys
-                print("[DEBUG] IOReport API initialized successfully (no sudo required)", file=sys.stderr)
         except IOReportError as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to initialize IOReport: {e}", file=sys.stderr)
             self._ioreport = None
             self._ioreport_available = False
         except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to initialize IOReport: {e}", file=sys.stderr)
             self._ioreport = None
             self._ioreport_available = False
     
@@ -145,25 +134,21 @@ class AppleAPICollector:
                 if self._powermetrics_available:
                     powermetrics_result = self._collect_via_powermetrics()
                     if powermetrics_result is not None:
-                        # Merge GPU/ANE usage from powermetrics into IOReport result
+                        # Merge GPU/ANE usage and frequencies from powermetrics into IOReport result
                         # Only merge if powermetrics actually got the data (not None)
                         if powermetrics_result.gpu_usage is not None:
                             ioreport_result.gpu_usage = powermetrics_result.gpu_usage
-                            if self._debug:
-                                import sys
-                                print(f"[DEBUG] Merged GPU usage from powermetrics: {ioreport_result.gpu_usage}%", file=sys.stderr)
                         if powermetrics_result.ane_usage is not None:
                             ioreport_result.ane_usage = powermetrics_result.ane_usage
-                            if self._debug:
-                                import sys
-                                print(f"[DEBUG] Merged ANE usage from powermetrics: {ioreport_result.ane_usage}%", file=sys.stderr)
                         if powermetrics_result.gpu_freq_mhz is not None:
                             ioreport_result.gpu_freq_mhz = powermetrics_result.gpu_freq_mhz
+                        # Merge CPU frequencies from powermetrics
+                        if powermetrics_result.pcpu_freq_mhz is not None:
+                            ioreport_result.pcpu_freq_mhz = powermetrics_result.pcpu_freq_mhz
+                        if powermetrics_result.ecpu_freq_mhz is not None:
+                            ioreport_result.ecpu_freq_mhz = powermetrics_result.ecpu_freq_mhz
                 return ioreport_result
             # If no power data, attempt fallback to powermetrics
-            if self._debug:
-                import sys
-                print("[DEBUG] IOReport returned no power data, falling back to powermetrics", file=sys.stderr)
         
         # Fallback to powermetrics if IOReport not available or produced no data
         # Note: This requires sudo, so it may fail
@@ -199,20 +184,10 @@ class AppleAPICollector:
                 smc_power = self._smc.get_system_power()
                 if smc_power is not None:
                     metrics.system_power = smc_power
-                    if self._debug:
-                        import sys
-                        print(f"[DEBUG] Got system power from SMC: {smc_power}W", file=sys.stderr)
-            
-            if self._debug:
-                import sys
-                print(f"[DEBUG] IOReport metrics: CPU={metrics.cpu_power}W, GPU={metrics.gpu_power}W, ANE={metrics.ane_power}W", file=sys.stderr)
             
             return metrics
             
         except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Error in IOReport collection: {e}", file=sys.stderr)
             return None
     
     def _collect_via_powermetrics(self) -> Optional[AppleMetrics]:
@@ -240,28 +215,13 @@ class AppleAPICollector:
                 text=True
             )
             
-            if self._debug:
-                import sys
-                print(f"[DEBUG] powermetrics return code: {result.returncode}", file=sys.stderr)
-                if result.stderr:
-                    print(f"[DEBUG] stderr: {result.stderr[:300]}", file=sys.stderr)
-                if result.stdout:
-                    print(f"[DEBUG] stdout sample: {result.stdout[:500]}", file=sys.stderr)
-            
             if result.returncode != 0:
                 # powermetrics requires sudo
                 # Check if it's a permission error
                 stderr_lower = result.stderr.lower() if result.stderr else ""
                 if 'superuser' in stderr_lower or 'sudo' in stderr_lower:
                     # Return empty metrics instead of None so UI can show "N/A"
-                    if self._debug:
-                        import sys
-                        print("[DEBUG] powermetrics requires sudo", file=sys.stderr)
                     return AppleMetrics()
-                # Log other errors for debugging
-                if self._debug:
-                    import sys
-                    print(f"[DEBUG] powermetrics error (code {result.returncode}): {result.stderr[:200]}", file=sys.stderr)
                 return AppleMetrics()  # Return empty instead of None
             
             # Parse text output (more reliable than plist)
@@ -278,16 +238,7 @@ class AppleAPICollector:
                 smc_power = self._smc.get_system_power()
                 if smc_power is not None:
                     parsed.system_power = smc_power
-                    if self._debug:
-                        import sys
-                        print(f"[DEBUG] Got system power from SMC: {smc_power}W", file=sys.stderr)
             
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Parsed metrics: CPU={parsed.cpu_power}W, GPU={parsed.gpu_power}W, ANE={parsed.ane_power}W, GPU Usage={parsed.gpu_usage}%", file=sys.stderr)
-                # Log raw powermetrics output for debugging GPU usage
-                print(f"[DEBUG] Raw powermetrics output (first 2000 chars):\n{result.stdout[:2000]}", file=sys.stderr)
-                print(f"[DEBUG] Raw powermetrics output (last 2000 chars):\n{result.stdout[-2000:]}", file=sys.stderr)
             return parsed
         
         except subprocess.TimeoutExpired:
@@ -395,8 +346,6 @@ class AppleAPICollector:
         
         if not text:
             return metrics
-        
-        import sys
         
         # powermetrics text format examples:
         # "CPU Power: 5.971 W"
@@ -525,9 +474,6 @@ class AppleAPICollector:
                         metrics.system_power = value / 1000.0  # Convert mW to W
                     else:
                         metrics.system_power = value
-                    import sys
-                    if self._debug:
-                        print(f"[DEBUG] Found system power via pattern '{pattern}': {metrics.system_power}W", file=sys.stderr)
                     break
                 except (ValueError, IndexError):
                     continue
@@ -558,11 +504,96 @@ class AppleAPICollector:
                     # For now, if we can't find actual system power, set to None
                     # The frontend can display "N/A" or calculate an estimate
                     # Note: To get accurate system power, we may need to use SMC or IOReport API
-                    if self._debug:
-                        print(f"[DEBUG] System power not found. Combined Power: {combined_w}W, DRAM: {dram_w}W. Setting to None (need SMC/IOReport for accurate total)", file=sys.stderr)
                     metrics.system_power = None  # Set to None instead of approximate value
                 except (ValueError, IndexError):
                     pass
+        
+        # Try to extract CPU frequencies if available
+        # Format: "CPU 0 frequency: 4512 MHz"
+        # We need to match both CPU number and frequency to identify P-core vs E-core
+        # Method 1: Use cluster information (E-Cluster vs P-Cluster)
+        # Method 2: Use CPU number ranges (E-cores typically come first, then P-cores)
+        
+        # Extract CPU frequencies with their CPU numbers
+        cpu_freq_pattern = re.compile(r'CPU\s+(\d+)\s+frequency[:\s]+([\d.]+)\s*MHz', re.IGNORECASE)
+        cpu_freq_data = cpu_freq_pattern.findall(text)
+        
+        if cpu_freq_data:
+            try:
+                # Parse CPU numbers and frequencies
+                cpu_freqs = [(int(cpu_num), float(freq)) for cpu_num, freq in cpu_freq_data]
+                cpu_freqs.sort(key=lambda x: x[0])  # Sort by CPU number
+                
+                if cpu_freqs:
+                    # Determine P-core and E-core ranges based on CPU count
+                    total_cpus = len(cpu_freqs)
+                    cpu_numbers = [cpu_num for cpu_num, _ in cpu_freqs]
+                    
+                    # Try to identify clusters from text
+                    # Method 1: Use position-based matching - find cluster boundaries and assign CPUs based on position
+                    e_cluster_match = re.search(r'E-Cluster', text, re.IGNORECASE)
+                    p_cluster_match = re.search(r'P\d*-Cluster', text, re.IGNORECASE)
+                    
+                    e_core_indices = []
+                    p_core_indices = []
+                    
+                    if e_cluster_match and p_cluster_match:
+                        # Find the end positions of cluster headers
+                        e_cluster_end = e_cluster_match.end()
+                        p_cluster_end = p_cluster_match.end()
+                        
+                        # Assign CPUs to clusters based on their position in text
+                        for cpu_num, freq in cpu_freqs:
+                            # Find the position of this CPU frequency in the text
+                            cpu_match = re.search(rf'CPU\s+{cpu_num}\s+frequency', text, re.IGNORECASE)
+                            if cpu_match:
+                                cpu_pos = cpu_match.start()
+                                # If CPU appears between E-Cluster and P-Cluster, it's an E-core
+                                # If CPU appears after P-Cluster, it's a P-core
+                                if e_cluster_end < cpu_pos < p_cluster_end:
+                                    e_core_indices.append((cpu_num, freq))
+                                elif cpu_pos > p_cluster_end:
+                                    p_core_indices.append((cpu_num, freq))
+                    
+                    # Fallback: Use CPU count to estimate P/E core split if clusters not found
+                    if not e_core_indices and not p_core_indices:
+                        # Common Apple Silicon configurations:
+                        # M1/M2/M3: 8 CPUs (4P + 4E) - first 4 are E, last 4 are P
+                        # M1 Pro/Max: 10 CPUs (8P + 2E) - first 2 are E, last 8 are P
+                        # M2 Pro/Max: 12 CPUs (8P + 4E) - first 4 are E, last 8 are P
+                        # M3 Pro: 12 CPUs (6P + 6E) - first 6 are E, last 6 are P (ambiguous!)
+                        # M3 Max: 16 CPUs (12P + 4E) - first 4 are E, last 12 are P
+                        
+                        if total_cpus == 8:
+                            e_core_indices = cpu_freqs[:4]
+                            p_core_indices = cpu_freqs[4:]
+                        elif total_cpus == 10:
+                            e_core_indices = cpu_freqs[:2]
+                            p_core_indices = cpu_freqs[2:]
+                        elif total_cpus == 12:
+                            # M2 Pro/Max: 8P + 4E OR M3 Pro: 6P + 6E
+                            # Default to M2 Pro/Max configuration (first 4 are E)
+                            e_core_indices = cpu_freqs[:4]
+                            p_core_indices = cpu_freqs[4:]
+                        elif total_cpus == 16:
+                            e_core_indices = cpu_freqs[:4]
+                            p_core_indices = cpu_freqs[4:]
+                        else:
+                            # Default: assume first half are E-cores, second half are P-cores
+                            mid = total_cpus // 2
+                            e_core_indices = cpu_freqs[:mid]
+                            p_core_indices = cpu_freqs[mid:]
+                    
+                    # Extract frequencies
+                    if e_core_indices:
+                        e_freqs = [freq for _, freq in e_core_indices]
+                        metrics.ecpu_freq_mhz = max(e_freqs)  # Use max E-core freq
+                    
+                    if p_core_indices:
+                        p_freqs = [freq for _, freq in p_core_indices]
+                        metrics.pcpu_freq_mhz = max(p_freqs)  # Use max P-core freq
+            except (ValueError, IndexError):
+                pass
         
         # Try to extract GPU frequency if available
         gpu_freq_match = re.search(r'GPU.*?frequency[:\s]+([\d.]+)\s*MHz', text, re.IGNORECASE)
@@ -628,13 +659,9 @@ class AppleAPICollector:
             # This gives us "performance utilization" similar to macmon
             scaled_usage = (avg_freq_mhz * hw_active_residency / 100.0) / max_freq_mhz * 100.0
             metrics.gpu_usage = scaled_usage
-            import sys
-            print(f"[DEBUG] GPU usage scaled: {scaled_usage:.2f}% (residency: {hw_active_residency}%, avg_freq: {avg_freq_mhz}MHz, max_freq: {max_freq_mhz}MHz)", file=sys.stderr)
         elif hw_active_residency is not None:
             # Fallback to raw residency if we don't have frequency info
             metrics.gpu_usage = hw_active_residency
-            import sys
-            print(f"[DEBUG] GPU usage (raw residency): {hw_active_residency}%", file=sys.stderr)
         
         # Fallback: try GPU idle residency and calculate usage
         if metrics.gpu_usage is None:
@@ -643,8 +670,6 @@ class AppleAPICollector:
                 try:
                     idle_percent = float(gpu_idle_match.group(1))
                     metrics.gpu_usage = 100.0 - idle_percent
-                    import sys
-                    print(f"[DEBUG] Found GPU usage via idle residency: {metrics.gpu_usage}% (idle: {idle_percent}%)", file=sys.stderr)
                 except (ValueError, IndexError):
                     pass
         
@@ -662,16 +687,9 @@ class AppleAPICollector:
                 if match:
                     try:
                         metrics.gpu_usage = float(match.group(1))
-                        import sys
-                        print(f"[DEBUG] Found GPU usage via pattern '{pattern}': {metrics.gpu_usage}%", file=sys.stderr)
                         break
                     except (ValueError, IndexError):
                         continue
-        
-        # Log if GPU usage still not found
-        if metrics.gpu_usage is None:
-            import sys
-            print(f"[DEBUG] GPU usage not found in powermetrics output", file=sys.stderr)
         
         # Try to extract ANE usage if available
         ane_usage_patterns = [
@@ -687,14 +705,13 @@ class AppleAPICollector:
                 try:
                     metrics.ane_usage = float(match.group(1))
                     break
-                except (ValueError, IndexError):
-                    continue
+                    except (ValueError, IndexError):
+                        continue
         
         return metrics
     
     def _get_gpu_usage_via_ioreg(self) -> Optional[float]:
         """Try to get GPU usage percentage via ioreg"""
-        import sys
         try:
             # Try to query GPU performance controller
             # This is a best-effort attempt - may not work on all systems
@@ -704,11 +721,6 @@ class AppleAPICollector:
                 timeout=2,
                 text=True
             )
-            
-            if self._debug:
-                print(f"[DEBUG] ioreg IOAccelerator return code: {result.returncode}", file=sys.stderr)
-                if result.stdout:
-                    print(f"[DEBUG] ioreg IOAccelerator output (first 500 chars):\n{result.stdout[:500]}", file=sys.stderr)
             
             if result.returncode == 0 and result.stdout:
                 # Look for GPU utilization patterns in ioreg output
@@ -721,8 +733,6 @@ class AppleAPICollector:
                 if utilization_match:
                     try:
                         usage = float(utilization_match.group(1))
-                        if self._debug:
-                            print(f"[DEBUG] Found GPU usage via IOAccelerator: {usage}%", file=sys.stderr)
                         return usage
                     except (ValueError, IndexError):
                         pass
@@ -734,11 +744,6 @@ class AppleAPICollector:
                 timeout=2,
                 text=True
             )
-            
-            if self._debug:
-                print(f"[DEBUG] ioreg AGXAccelerator return code: {result.returncode}", file=sys.stderr)
-                if result.stdout:
-                    print(f"[DEBUG] ioreg AGXAccelerator output (first 500 chars):\n{result.stdout[:500]}", file=sys.stderr)
             
             if result.returncode == 0 and result.stdout:
                 # Look for various GPU metrics
@@ -752,20 +757,13 @@ class AppleAPICollector:
                     if match:
                         try:
                             usage = float(match.group(1))
-                            if self._debug:
-                                print(f"[DEBUG] Found GPU usage via AGXAccelerator pattern '{pattern}': {usage}%", file=sys.stderr)
                             return usage
                         except (ValueError, IndexError):
                             continue
             
-            if self._debug:
-                print(f"[DEBUG] ioreg method did not find GPU usage", file=sys.stderr)
-            
-        except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+        except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
             # ioreg may not be available or may fail
-            if self._debug:
-                import sys
-                print(f"[DEBUG] ioreg error: {e}", file=sys.stderr)
+            pass
         
         return None
     
