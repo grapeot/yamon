@@ -11,12 +11,12 @@ cd frontend
 npm install
 npm run build
 
-echo "Copying static files to backend..."
+echo "Copying static files to yamon/static..."
 cd ..
-rm -rf backend/static
-mkdir -p backend/static
-cp -r frontend/dist/* backend/static/
+rm -rf yamon/static
+mkdir -p yamon/static
+cp -r frontend/dist/* yamon/static/
 
-echo "Build complete! Static files are in backend/static/"
-echo "You can now start the backend server with: ./run_backend.sh"
+echo "Build complete! Static files are in yamon/static/"
+echo "You can now start the server with: ./run_backend.sh or yamon"
 
