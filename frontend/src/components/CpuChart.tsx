@@ -187,11 +187,6 @@ export function CpuChart({ cpuPercent, cpuPerCore, cpuPPercent, cpuEPercent, pcp
   const displayTotal = Math.abs(cpuPercent - calculatedTotal) < 0.1 ? cpuPercent : calculatedTotal
   let titleText = `CPU Usage: ${displayTotal.toFixed(1)}% (P: ${cpuPPercent.toFixed(1)}%, E: ${cpuEPercent.toFixed(1)}%)`
   
-  // Debug: log frequency values
-  if (import.meta.env.DEV) {
-    console.log('CPU Frequencies:', { pcpuFreqMhz, ecpuFreqMhz })
-  }
-  
   // Add frequency information if available
   const freqParts: string[] = []
   if (pcpuFreqMhz != null && typeof pcpuFreqMhz === 'number' && !isNaN(pcpuFreqMhz)) {

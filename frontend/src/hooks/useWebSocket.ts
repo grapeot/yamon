@@ -43,7 +43,6 @@ export function useWebSocket() {
 
     ws.onopen = () => {
       setConnected(true)
-      console.log('WebSocket connected')
     }
 
     ws.onmessage = (event) => {
@@ -58,7 +57,6 @@ export function useWebSocket() {
 
     ws.onclose = () => {
       setConnected(false)
-      console.log('WebSocket disconnected')
       // 自动重连
       setTimeout(() => {
         if (wsRef.current?.readyState === WebSocket.CLOSED) {

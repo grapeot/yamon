@@ -78,9 +78,6 @@ class IOReport:
             self._init_ioreport()
             
         except Exception as e:
-            if self._debug:
-                import sys
-                print(f"[DEBUG] Failed to initialize IOReport: {e}", file=sys.stderr)
             raise IOReportError(f"Failed to initialize IOReport: {e}")
     
     def _init_core_foundation(self):

@@ -63,6 +63,10 @@
 .chart-container {
   width: 100%;
   margin-top: 0.5rem;
+  user-select: text;
+  -webkit-user-select: text;
+  -moz-user-select: text;
+  -ms-user-select: text;
 }
 
 .metric-section h2 {
