@@ -9,6 +9,7 @@ import platform
 import re
 import json
 import plistlib
+import sys
 from typing import Optional
 from dataclasses import dataclass
 
@@ -149,6 +150,11 @@ class AppleAPICollector:
                             ioreport_result.pcpu_freq_mhz = powermetrics_result.pcpu_freq_mhz
                         if powermetrics_result.ecpu_freq_mhz is not None:
                             ioreport_result.ecpu_freq_mhz = powermetrics_result.ecpu_freq_mhz
+                        # Merge CPU maximum frequencies from powermetrics
+                        if powermetrics_result.pcpu_max_freq_mhz is not None:
+                            ioreport_result.pcpu_max_freq_mhz = powermetrics_result.pcpu_max_freq_mhz
+                        if powermetrics_result.ecpu_max_freq_mhz is not None:
+                            ioreport_result.ecpu_max_freq_mhz = powermetrics_result.ecpu_max_freq_mhz
                 return ioreport_result
             # If no power data, attempt fallback to powermetrics
         
@@ -774,8 +780,8 @@ class AppleAPICollector:
                 try:
                     metrics.ane_usage = float(match.group(1))
                     break
-                    except (ValueError, IndexError):
-                        continue
+                except (ValueError, IndexError):
+                    continue
         
         return metrics
     

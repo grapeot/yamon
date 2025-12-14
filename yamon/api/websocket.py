@@ -140,16 +140,17 @@ async def websocket_metrics(websocket: WebSocket):
                 pcpu_current_performance = p_core_count * metrics.pcpu_freq_mhz * (p_core_avg_usage / 100.0)
                 cpu_p_percent = (pcpu_current_performance / cpu_max_performance) * 100.0
             else:
-                # 如果没有频率信息，回退到简单的使用率比例
-                cpu_p_percent = (p_core_count * p_core_avg_usage) / cpu_count * 100.0 if cpu_count > 0 else 0.0
+                # 如果没有频率信息，回退到简单的使用率（P核的平均使用率就是 p_core_avg_usage）
+                cpu_p_percent = p_core_avg_usage
             
             if metrics.ecpu_freq_mhz is not None and cpu_max_performance > 0:
                 # E核总算力 = E核数量 × E核当前频率 × (E核平均使用率 / 100)
                 ecpu_current_performance = e_core_count * metrics.ecpu_freq_mhz * (e_core_avg_usage / 100.0)
                 cpu_e_percent = (ecpu_current_performance / cpu_max_performance) * 100.0
             else:
-                # 如果没有频率信息，回退到简单的使用率比例
-                cpu_e_percent = (e_core_count * e_core_avg_usage) / cpu_count * 100.0 if cpu_count > 0 else 0.0
+                # 如果没有频率信息，回退到简单的使用率（E核的平均使用率就是 e_core_avg_usage）
+                cpu_e_percent = e_core_avg_usage
+            
             
             # cpu_percent 应该是 P 核和 E 核算力占最高算力的比例之和
             cpu_percent_scaled = cpu_p_percent + cpu_e_percent
