@@ -50,6 +50,9 @@ frontend/.vite/
 # Backend static files (generated)
 backend/static/
 
+# Python package static files (generated during build)
+yamon/static/
+
 
 # Python build artifacts
 dist/

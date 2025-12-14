@@ -1,6 +1,7 @@
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
+# Note: setup.py contains custom build_py command to build frontend before packaging
 
 [project]
 name = "yamon"
