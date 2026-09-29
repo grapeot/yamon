@@ -8,11 +8,14 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
   padding: 1rem 2rem;
   background: #2a2a2a;
   border-bottom: 1px solid #3a3a3a;
+}
+
+.app-footer {
+  padding: 1rem 2rem 1.5rem;
+  border-top: 1px solid #3a3a3a;
 }
 
 .summary-strip {

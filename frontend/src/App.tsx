@@ -91,7 +91,6 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Yamon - Mac System Monitor</h1>
-        <SummaryStrip />
         <div className={`status ${connected ? 'connected' : 'disconnected'}`}>
           {connected ? '● Connected' : '○ Disconnected'}
         </div>
@@ -164,6 +163,9 @@ function App() {
           </div>
         )}
       </main>
+      <footer className="app-footer">
+        <SummaryStrip />
+      </footer>
     </div>
   )
 }

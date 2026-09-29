@@ -119,7 +119,7 @@ Yamon bridges the gap between low-level hardware counters and high-level visuali
 ## 📈 Multi-Day Averages
 
 Yamon records per-minute aggregates of CPU, memory used, and system power to a
-single JSONL file and shows rolling 3/7/14-day averages in the dashboard header.
+single JSONL file and shows rolling 3/7/14-day averages at the bottom of the dashboard.
 
 - Data file: `~/Library/Application Support/yamon/summary.jsonl` (override the
   directory with the `YAMON_DATA_DIR` environment variable)
