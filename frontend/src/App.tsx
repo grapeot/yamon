@@ -6,6 +6,7 @@ import { NetworkChart } from './components/NetworkChart'
 import { PowerChart } from './components/PowerChart'
 import { GpuChart } from './components/GpuChart'
 import { AneChart } from './components/AneChart'
+import { SummaryStrip } from './components/SummaryStrip'
 import './App.css'
 
 // Define types inline to avoid import issues
@@ -162,6 +163,9 @@ function App() {
           </div>
         )}
       </main>
+      <footer className="app-footer">
+        <SummaryStrip />
+      </footer>
     </div>
   )
 }

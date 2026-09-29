@@ -13,6 +13,43 @@
   border-bottom: 1px solid #3a3a3a;
 }
 
+.app-footer {
+  padding: 1rem 2rem 1.5rem;
+  border-top: 1px solid #3a3a3a;
+}
+
+.summary-strip {
+  display: grid;
+  grid-template-columns: auto auto auto auto;
+  gap: 0.15rem 1.5rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-strip .summary-label,
+.summary-strip .summary-head {
+  color: #777;
+}
+
+.summary-strip .summary-head {
+  color: #999;
+}
+
+.summary-strip .summary-value {
+  color: #ddd;
+}
+
+.summary-strip .summary-value.dim {
+  color: #555;
+}
+
+.summary-partial {
+  color: #666;
+  font-size: 0.65rem;
+  margin-left: 0.25rem;
+}
+
 .app-header h1 {
   margin: 0;
   font-size: 2rem;

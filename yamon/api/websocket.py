@@ -4,9 +4,11 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 try:
     from yamon.collectors.collector import MetricsCollector, SystemMetrics
     from yamon.history import MetricsHistory
+    from yamon.summary import summary_store
 except ImportError:
     from collectors.collector import MetricsCollector, SystemMetrics
     from history import MetricsHistory
+    from summary import summary_store
 import asyncio
 import json
 from typing import Optional
@@ -32,6 +34,8 @@ async def _background_collector():
             async with _metrics_lock:
                 _latest_metrics = metrics
             history.add_metrics(metrics)
+            # 持久化：每秒累加，每分钟落一行
+            await asyncio.to_thread(summary_store.tick, metrics)
             # 收集间隔：1秒（1fps）
             await asyncio.sleep(1.0)
         except Exception as e:
