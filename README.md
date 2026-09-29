@@ -10,20 +10,20 @@ Yamon is a modern system monitor engineered specifically for Apple Silicon. It g
 
 ### 🚀 Deep Apple Silicon Integration
 Unlock metrics that standard tools often hide:
-- **Total System Power**: Accurate, real-time power readings (mW) derived directly from the SMC (System Management Controller).
-- **Power Breakdown**: visualize exactly how much energy your CPU, GPU, and Neural Engine are consuming.
-- **Neural Engine (ANE) Usage**: Track utilization of dedicated AI hardware.
-- **GPU Frequency & Usage**: Gain granular insights into graphics performance and clock speeds.
+- **Total System Power**: SMC power reading in watts when the sensor is available.
+- **Power Breakdown**: Estimated CPU, GPU, and Neural Engine power in watts.
+- **Neural Engine (ANE)**: Estimated power is shown when available. Current samplers do not provide ANE utilization, so that reading remains unavailable.
+- **GPU Frequency & Usage**: GPU frequency and hardware active-time percentage when available.
 
 ### ⚡️ Real-Time & Responsive
-- **Millisecond Latency**: Powered by WebSockets for an instant, lag-free monitoring experience.
+- **Live Sampling**: WebSockets send each new sample as it arrives, normally about once per second.
 - **Historical Context**: Interactive charts visualize the last 2 minutes of performance data.
 - **Modern UI**: Built with React, TypeScript, and ECharts for a premium, responsive aesthetic on any device.
 
 ### 🛠️ Native Performance, Pure Python
 - **Native APIs via ctypes**: Directly interfaces with macOS `IOReport` and `SMC` private frameworks.
 - **No Heavy Dependencies**: Pure Python implementation without the need for compiling Rust or C/C++ binaries.
-- **No Sudo Required**: Most metrics, including granular Power and GPU stats, function without root privileges.*
+- **No Sudo Required**: IOReport provides component power without root; `powermetrics` adds GPU active time and CPU/GPU frequencies when Yamon runs as root.*
 
 ## 📦 Installation
 
@@ -44,6 +44,7 @@ yamon
 Visit **http://localhost:8000** to view your dashboard.
 
 📦 **Available on PyPI**: [https://pypi.org/project/yamon/](https://pypi.org/project/yamon/)
+PyPI releases may lag this repository; install from source to test unreleased changes.
 
 ### Install from Source
 
@@ -71,6 +72,65 @@ Or with custom options:
 ```bash
 yamon --host 0.0.0.0 --port 8000 --reload
 ```
+
+Yamon listens on `127.0.0.1` by default. Use `--host` only when you intend to
+make the unauthenticated dashboard reachable from another device.
+
+### Inspecting a One-Shot Sample on macOS
+
+`powermetrics` needs administrator privileges. This command takes one sample,
+writes a local JSON file, and exits; it does not start Yamon:
+
+```bash
+sudo /usr/bin/powermetrics -i 1000 -n 1 -s cpu_power,gpu_power,ane_power -f plist \
+  | /usr/bin/python3 -c 'import sys,plistlib,json; raw=sys.stdin.buffer.read().strip(b"\0"); print(json.dumps(plistlib.loads(raw),default=str))' \
+  > powermetrics.json
+```
+
+The `processor.cpu_power`, `processor.gpu_power`, and `processor.ane_power`
+values in this plist are **milliwatts**; Yamon converts them to watts. The
+`gpu.idle_ratio` field measures idle time, so Yamon displays
+`(1 - idle_ratio) × 100` as GPU active time. Apple's estimated power figures
+are useful for changes on one machine, not calibrated wall-outlet power.
+
+To allow only that exact `powermetrics` command without a password on a Mac,
+open a sudoers file with the validating editor:
+
+```bash
+sudo env EDITOR=/usr/bin/nano /usr/sbin/visudo -f /etc/sudoers.d/yamon-powermetrics
+```
+
+Paste the following **inside the editor, not at the shell prompt**:
+
+```text
+YOUR_USERNAME ALL=(root) NOPASSWD: /usr/bin/powermetrics -i 1000 -n 1 -s cpu_power\,gpu_power\,ane_power -f plist
+```
+
+Replace `YOUR_USERNAME` with the output of `id -un`. In nano, press `Ctrl-O`, Return,
+then `Ctrl-X`. Check the rule with a noninteractive one-shot call:
+
+```bash
+sudo -n /usr/bin/powermetrics -i 1000 -n 1 -s cpu_power,gpu_power,ane_power -f plist > /dev/null
+```
+
+The backslashes before commas belong only in the sudoers rule, not in the
+terminal command. This rule grants access to this one `powermetrics` command;
+it does **not** make Yamon itself run as root. To use Yamon's root-only metrics,
+start Yamon from an explicitly privileged launch (for example,
+`sudo uv tool run yamon` when installed with uv).
+
+### Viewing Temperatures
+
+Yamon does not yet display temperatures. On a Mac with `macmon` installed,
+CPU and GPU sensor averages can be checked without sudo:
+
+```bash
+macmon pipe -s 1 -i 1000 | jq '.temp'
+```
+
+These are separate CPU and GPU temperature readings in °C, not one overall
+"system temperature." `powermetrics -s thermal` reports thermal pressure,
+not a temperature in °C.
 
 ### Development Mode (From Source)
 
@@ -129,7 +189,10 @@ single JSONL file and shows rolling 3/7/14-day averages at the bottom of the das
 - Averages only cover time while Yamon is running and the machine is awake
 
 ## 🔋 Power Monitoring Accuracy
-Yamon leverages the `mach_task_self()` iteration method to interface with the hardware SMC. This allows it to read the **System Total Power (PSTR)** sensor with high precision, bypassing standard permission restrictions found in other tools.
+Yamon reads the SMC `PSTR` key for system power when available. Component
+power is estimated from `powermetrics` or IOReport over a one-second window.
+These sources cover different parts of the machine, so system power is not
+expected to equal the sum of CPU, GPU, and ANE power.
 
 ## 📄 License
 
