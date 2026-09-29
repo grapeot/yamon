@@ -1,8 +1,8 @@
-# Yamon 🍊
+# Yamon 🦆
 
 **Beautiful, In-Depth System Monitoring for macOS.**
 
-Yamon is a modern system monitor engineered specifically for Apple Silicon. It goes beyond standard CPU and RAM metrics to reveal the true heartbeat of your Mac — from Neural Engine activity to precise component-level power consumption — all displayed in an elegant, real-time web interface.
+Yamon (Duck Monitor) is a modern system monitor engineered specifically for Apple Silicon. It goes beyond standard CPU and RAM metrics to show Neural Engine activity, component power estimates, and temperatures in a real-time web interface.
 
 ![Yamon Screenshot](docs/screenshot.jpg)
 

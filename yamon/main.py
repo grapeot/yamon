@@ -62,6 +62,12 @@ if static_dir:
     assets_dir = static_dir / "assets"
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=str(assets_dir)), name="assets")
+
+    favicon_path = static_dir / "favicon.svg"
+    if favicon_path.is_file():
+        @app.get("/favicon.svg", include_in_schema=False)
+        async def serve_favicon():
+            return FileResponse(str(favicon_path), media_type="image/svg+xml")
     
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
