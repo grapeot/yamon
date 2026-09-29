@@ -6,6 +6,8 @@ import ctypes
 import ctypes.util
 import struct
 import sys
+import math
+import statistics
 
 # --- Structures ---
 
@@ -51,10 +53,13 @@ class SMC:
     KERNEL_INDEX_SMC = 2
     SMC_CMD_READ_BYTES = 5
     SMC_CMD_READ_KEY_INFO = 9
+    SMC_CMD_READ_INDEX = 8
+    SMC_FLOAT_TYPE = int.from_bytes(b"flt ", "big")
 
     def __init__(self, debug=False):
         self._debug = debug
         self._conn = 0
+        self._temperature_keys = None
         self._init_iokit()
 
     def _init_iokit(self):
@@ -187,6 +192,53 @@ class SMC:
                 return struct.unpack('<f', val)[0]
                 
         return None
+
+    def _key_by_index(self, index):
+        kd = KeyData()
+        kd.data8 = self.SMC_CMD_READ_INDEX
+        kd.data32 = index
+        out = self.call_smc(kd)
+        return out.key.to_bytes(4, "big").decode("ascii", "replace") if out else None
+
+    def _read_temperature(self, name):
+        raw = self.read_key(name)
+        if raw is None or len(raw) != 4:
+            return None
+        value = struct.unpack("<f", raw)[0]
+        return value if math.isfinite(value) and 0 < value <= 150 else None
+
+    def _discover_temperature_keys(self):
+        count_raw = self.read_key("#KEY")
+        if count_raw is None or len(count_raw) != 4:
+            return ([], [])
+        count = int.from_bytes(count_raw, "big")
+        if count > 10000:
+            return ([], [])
+        cpu_keys, gpu_keys = [], []
+        for index in range(count):
+            name = self._key_by_index(index)
+            if not name or not name.startswith(("Tp", "Te", "Ts", "Tg")):
+                continue
+            info = self.read_key_info(name)
+            if not info or info.data_size != 4 or info.data_type != self.SMC_FLOAT_TYPE:
+                continue
+            if self._read_temperature(name) is None:
+                continue
+            (gpu_keys if name.startswith("Tg") else cpu_keys).append(name)
+        return (cpu_keys, gpu_keys)
+
+    def get_temperatures(self):
+        """Return average CPU/GPU sensor Celsius values, or None if absent."""
+        if not self._conn:
+            return (None, None)
+        if self._temperature_keys is None:
+            self._temperature_keys = self._discover_temperature_keys()
+        readings = []
+        for keys in self._temperature_keys:
+            values = [self._read_temperature(name) for name in keys]
+            valid = [value for value in values if value is not None]
+            readings.append(statistics.fmean(valid) if valid else None)
+        return tuple(readings)
 
     def close(self):
         if self._conn:

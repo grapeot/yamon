@@ -14,6 +14,7 @@ Unlock metrics that standard tools often hide:
 - **Power Breakdown**: Estimated CPU, GPU, and Neural Engine power in watts.
 - **Neural Engine (ANE)**: Estimated power is shown when available. Current samplers do not provide ANE utilization, so that reading remains unavailable.
 - **GPU Frequency & Usage**: GPU frequency and hardware active-time percentage when available.
+- **CPU & GPU Temperature**: Average of available SMC temperature sensors in °C, with a live two-minute chart.
 
 ### ⚡️ Real-Time & Responsive
 - **Live Sampling**: WebSockets send each new sample as it arrives, normally about once per second.
@@ -121,8 +122,10 @@ start Yamon from an explicitly privileged launch (for example,
 
 ### Viewing Temperatures
 
-Yamon does not yet display temperatures. On a Mac with `macmon` installed,
-CPU and GPU sensor averages can be checked without sudo:
+The Temperature chart shows separate CPU and GPU sensor averages and their
+recent history. Missing or invalid sensor readings appear as unavailable, not
+as 0°C. These sensors can be read without sudo on supported Macs. For an
+independent one-shot check on a Mac with `macmon` installed:
 
 ```bash
 macmon pipe -s 1 -i 1000 | jq '.temp'

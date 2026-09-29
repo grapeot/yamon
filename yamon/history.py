@@ -19,15 +19,15 @@ class HistoryBuffer:
         self.max_size = max_size
         self._data = deque(maxlen=max_size)
     
-    def add(self, value: float) -> None:
+    def add(self, value: Optional[float]) -> None:
         """Add a new value to history"""
         self._data.append(value)
     
-    def get_values(self) -> List[float]:
+    def get_values(self) -> List[Optional[float]]:
         """Get all historical values"""
         return list(self._data)
     
-    def get_latest(self, count: int) -> List[float]:
+    def get_latest(self, count: int) -> List[Optional[float]]:
         """Get latest N values"""
         return list(self._data)[-count:]
     
@@ -70,6 +70,10 @@ class MetricsHistory:
         # GPU/ANE
         self.gpu_usage = HistoryBuffer(max_size)
         self.ane_usage = HistoryBuffer(max_size)
+
+        # Temperatures; preserve None so missing sensor readings leave gaps.
+        self.cpu_temp_c = HistoryBuffer(max_size)
+        self.gpu_temp_c = HistoryBuffer(max_size)
     
     def update_cpu_cores(self, core_count: int) -> None:
         """Initialize per-core history buffers"""
@@ -110,4 +114,5 @@ class MetricsHistory:
             self.gpu_usage.add(metrics.gpu_usage)
         if metrics.ane_usage is not None:
             self.ane_usage.add(metrics.ane_usage)
-
+        self.cpu_temp_c.add(metrics.cpu_temp_c)
+        self.gpu_temp_c.add(metrics.gpu_temp_c)
