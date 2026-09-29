@@ -30,6 +30,8 @@ def test_interleaved_topology_and_contributions(monkeypatch):
     payload = metric_payload(metrics)
     assert payload["cpu_percent"] == payload["cpu_p_percent"] + payload["cpu_e_percent"]
     assert (payload["cpu_p_count"], payload["cpu_e_count"]) == (24, 8)
+    assert "ane_usage" not in payload
+    assert payload["ane_power"] is None
 
 
 def test_plist_units_frequency_and_gpu_residency(monkeypatch):
@@ -51,7 +53,6 @@ def test_plist_units_frequency_and_gpu_residency(monkeypatch):
     assert metrics.cpu_power == 58.1969
     assert metrics.gpu_power == 3.96744
     assert metrics.ane_power == 0.0
-    assert metrics.ane_usage is None
     assert metrics.system_power is None
     assert (metrics.pcpu_freq_mhz, metrics.ecpu_freq_mhz) == (3550, 1750)
     assert round(metrics.gpu_usage, 3) == 52.785
@@ -82,7 +83,6 @@ def test_one_shot_powermetrics_plist_transport(monkeypatch):
     assert result.cpu_power == 0.05
     assert result.gpu_power == 0.0
     assert result.gpu_usage == 0.0
-    assert result.ane_usage is None
     assert commands == [["/usr/bin/powermetrics", "-i", "1000", "-n", "1", "-s",
                          "cpu_power,gpu_power,ane_power", "-f", "plist"]]
 

@@ -22,7 +22,6 @@ class AppleMetrics:
     ecpu_max_freq_mhz: Optional[float] = None
     gpu_usage: Optional[float] = None  # GPU hardware active residency, 0-100
     gpu_freq_mhz: Optional[float] = None
-    ane_usage: Optional[float] = None
     cpu_temp_c: Optional[float] = None
     gpu_temp_c: Optional[float] = None
 
@@ -154,7 +153,6 @@ class AppleAPICollector:
         # The observed macOS plist GPU field is already numerically in MHz,
         # despite its freq_hz name (784.108 in a 784 MHz sample).
         metrics.gpu_freq_mhz = _number(gpu.get("freq_hz"))
-        # No documented ANE utilization field exists in this sample.
         return metrics
 
     @staticmethod

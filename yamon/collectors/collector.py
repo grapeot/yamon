@@ -40,7 +40,6 @@ class SystemMetrics:
     ecpu_max_freq_mhz: Optional[float] = None  # E-core maximum frequency in MHz
     gpu_usage: Optional[float] = None  # percentage
     gpu_freq_mhz: Optional[float] = None  # MHz
-    ane_usage: Optional[float] = None  # percentage
     cpu_temp_c: Optional[float] = None  # Celsius, average of available SMC CPU sensors
     gpu_temp_c: Optional[float] = None  # Celsius, average of available SMC GPU sensors
     sampled_at: float = 0.0  # completion timestamp, seconds since epoch
@@ -141,7 +140,6 @@ class MetricsCollector:
             ecpu_max_freq_mhz=apple_metrics.ecpu_max_freq_mhz if apple_metrics else None,
             gpu_usage=apple_metrics.gpu_usage if apple_metrics else None,
             gpu_freq_mhz=apple_metrics.gpu_freq_mhz if apple_metrics else None,
-            ane_usage=apple_metrics.ane_usage if apple_metrics else None,
             cpu_temp_c=apple_metrics.cpu_temp_c if apple_metrics else None,
             gpu_temp_c=apple_metrics.gpu_temp_c if apple_metrics else None,
             sampled_at=time.time(),

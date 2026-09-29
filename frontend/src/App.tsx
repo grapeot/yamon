@@ -4,7 +4,6 @@ import { MemoryChart } from './components/MemoryChart'
 import { NetworkChart } from './components/NetworkChart'
 import { PowerChart } from './components/PowerChart'
 import { GpuChart } from './components/GpuChart'
-import { AneChart } from './components/AneChart'
 import { SummaryStrip } from './components/SummaryStrip'
 import { TemperatureChart } from './components/TemperatureChart'
 import './App.css'
@@ -54,13 +53,6 @@ function App() {
                 gpuUsage={typedMetrics.gpu_usage}
                 gpuFreqMhz={typedMetrics.gpu_freq_mhz}
                 history={history.gpu_usage}
-              />
-            </div>
-
-            <div className="metric-section">
-              <AneChart
-                aneUsage={typedMetrics.ane_usage}
-                history={history.ane_usage}
               />
             </div>
 
