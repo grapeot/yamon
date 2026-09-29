@@ -24,7 +24,7 @@ async def get_metrics():
 
 @router.get("/summary")
 async def get_summary():
-    return await asyncio.to_thread(summary_store.get_windows, [3, 7, 14])
+    return await asyncio.to_thread(summary_store.get_windows, [3600, 86400, 3 * 86400, 7 * 86400, 14 * 86400])
 
 
 @router.get("/history")
