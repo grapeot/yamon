@@ -1,10 +1,8 @@
 """System metrics collector"""
 
 import psutil
-import subprocess
-import json
-import re
-from typing import Dict, List, Optional
+import time
+from typing import List, Optional
 from dataclasses import dataclass
 
 
@@ -43,6 +41,7 @@ class SystemMetrics:
     gpu_usage: Optional[float] = None  # percentage
     gpu_freq_mhz: Optional[float] = None  # MHz
     ane_usage: Optional[float] = None  # percentage
+    sampled_at: float = 0.0  # completion timestamp, seconds since epoch
 
 
 class MetricsCollector:
@@ -53,6 +52,7 @@ class MetricsCollector:
         self._last_network_recv = 0
         self._last_time = None
         self._apple_collector = None
+        self._last_cpu_times = psutil.cpu_times(percpu=True)
         self._init_apple_collector()
     
     def _init_apple_collector(self):
@@ -71,14 +71,17 @@ class MetricsCollector:
     
     def collect(self) -> SystemMetrics:
         """Collect current system metrics"""
-        import time
-        
-        # CPU (use minimal interval for faster updates, but still accurate)
-        # Note: interval=0 returns immediately but may be less accurate
-        # Using 0.01s (10ms) for a good balance between speed and accuracy
-        cpu_percent = psutil.cpu_percent(interval=0.01)
-        cpu_per_core = psutil.cpu_percent(interval=0.01, percpu=True)
-        cpu_count = psutil.cpu_count(logical=True)
+        # One shared interval for total and per-core utilization. The sampling
+        # window spans successive calls, including time spent in powermetrics.
+        current_cpu_times = psutil.cpu_times(percpu=True)
+        cpu_per_core = []
+        for old, new in zip(self._last_cpu_times, current_cpu_times):
+            total = sum(new) - sum(old)
+            idle = new.idle - old.idle
+            cpu_per_core.append(min(100.0, max(0.0, (total - idle) / total * 100.0)) if total > 0 else 0.0)
+        self._last_cpu_times = current_cpu_times
+        cpu_count = len(cpu_per_core)
+        cpu_percent = sum(cpu_per_core) / cpu_count if cpu_count else 0.0
         
         # Memory
         mem = psutil.virtual_memory()
@@ -137,6 +140,7 @@ class MetricsCollector:
             gpu_usage=apple_metrics.gpu_usage if apple_metrics else None,
             gpu_freq_mhz=apple_metrics.gpu_freq_mhz if apple_metrics else None,
             ane_usage=apple_metrics.ane_usage if apple_metrics else None,
+            sampled_at=time.time(),
         )
     
     def format_bytes(self, bytes: int) -> str:
@@ -146,4 +150,3 @@ class MetricsCollector:
                 return f"{bytes:.1f} {unit}"
             bytes /= 1024.0
         return f"{bytes:.1f} PB"
-

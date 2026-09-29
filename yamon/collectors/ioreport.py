@@ -301,17 +301,13 @@ class IOReport:
             raise IOReportError("Subscription not created")
         
         samples = max(1, samples)
-        # For single sample, use minimal wait time for faster collection
-        if samples == 1:
-            step_ms = 10  # 10ms minimum wait for delta calculation
-        else:
-            step_ms = max(1, total_ms // samples)
+        step_ms = max(1, total_ms // samples)
         
         # Initial sample
         prev_sample = self._ioreport.IOReportCreateSamples(
             self._subscription, self._channels, None
         )
-        prev_time = time.time()
+        prev_time = time.monotonic()
         
         acc = {
             'cpu_power': 0.0,
@@ -321,33 +317,36 @@ class IOReport:
             'gpu_sram_power': 0.0,
             'system_power': 0.0,
         }
+        observed = {key: 0 for key in acc}
         
         for _ in range(samples):
             time.sleep(step_ms / 1000.0)
             cur_sample = self._ioreport.IOReportCreateSamples(
                 self._subscription, self._channels, None
             )
-            elapsed_ms = max(1, int((time.time() - prev_time) * 1000))
+            elapsed_ms = max(1, int((time.monotonic() - prev_time) * 1000))
             
             delta = self._ioreport.IOReportCreateSamplesDelta(prev_sample, cur_sample, None)
             metrics = self._parse_sample(delta, elapsed_ms)
             
             for k in acc:
-                acc[k] += metrics.get(k, 0.0)
+                if metrics.get(k) is not None:
+                    acc[k] += metrics[k]
+                    observed[k] += 1
             
             # release
             self._core_foundation.CFRelease(prev_sample)
             self._core_foundation.CFRelease(delta)
             
             prev_sample = cur_sample
-            prev_time = time.time()
+            prev_time = time.monotonic()
         
         # release last sample
         self._core_foundation.CFRelease(prev_sample)
         
         # average
         for k in acc:
-            acc[k] /= samples
+            acc[k] = acc[k] / observed[k] if observed[k] else None
         
         return acc
     
@@ -361,6 +360,7 @@ class IOReport:
             'gpu_sram_power': 0.0,
             'system_power': 0.0,
         }
+        present = set()
         
         # Get IOReportChannels array
         channels_key = self._cf_string_from_str("IOReportChannels")
@@ -368,7 +368,7 @@ class IOReport:
         self._core_foundation.CFRelease(channels_key)
         
         if not channels_array:
-            return metrics
+            return {key: None for key in metrics}
         
         # Iterate through channels
         count = self._core_foundation.CFArrayGetCount(channels_array)
@@ -398,21 +398,27 @@ class IOReport:
                 
                 if "CPU Energy" in channel_name or channel_name.endswith("CPU Energy"):
                     metrics['cpu_power'] += watts
+                    present.add('cpu_power')
                 elif channel_name.startswith("GPU Energy") or channel_name == "GPU Energy":
                     metrics['gpu_power'] += watts
+                    present.add('gpu_power')
                 elif channel_name.startswith("ANE") or "ANE Energy" in channel_name:
                     metrics['ane_power'] += watts
+                    present.add('ane_power')
                 elif channel_name.startswith("DRAM"):
                     metrics['dram_power'] += watts
+                    present.add('dram_power')
                 elif channel_name.startswith("GPU SRAM"):
                     metrics['gpu_sram_power'] += watts
+                    present.add('gpu_sram_power')
                 elif "System" in channel_name or "Total" in channel_name or "All" in channel_name:
                     # Some systems expose total/soc power channel
                     metrics['system_power'] += watts
+                    present.add('system_power')
         
-        # If system_power not provided, approximate as sum of components
-        if metrics['system_power'] <= 0.0:
-            metrics['system_power'] = metrics['cpu_power'] + metrics['gpu_power'] + metrics['ane_power'] + metrics['dram_power'] + metrics['gpu_sram_power']
+        for key in metrics:
+            if key not in present:
+                metrics[key] = None
         
         return metrics
     
@@ -449,4 +455,3 @@ class IOReport:
             self.close()
         except Exception:
             pass  # Ignore errors during cleanup
-

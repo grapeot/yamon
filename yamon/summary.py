@@ -1,7 +1,6 @@
 """Persistent summary recording.
 
-Accumulates running sums/counts of a small metric set in memory (one sample
-per second), flushes a single JSON line per minute to a JSONL file, and
+Accumulates time-weighted metric sums, flushes a JSON line per minute, and
 auto-rotates that file so disk usage stays bounded:
 
 - time-based retention: rows older than RETENTION_DAYS are dropped
@@ -93,6 +92,7 @@ class SummaryStore:
         self._mem_n = 0
         self._pwr_s = 0.0
         self._pwr_n = 0
+        self._last_sample_at: Optional[float] = None
         self._window_start: Optional[int] = None
         self._next_flush_at: Optional[float] = None
         self._last_rotate_check = time.monotonic()
@@ -111,18 +111,22 @@ class SummaryStore:
     # ------------------------------------------------------------------ write
 
     def tick(self, metrics) -> None:
-        """Accumulate one sample; flush + rotate when due. Call once per second."""
+        """Accumulate observed awake time; never count a long sleep gap."""
         with self._lock:
+            sampled_at = getattr(metrics, "sampled_at", None) or time.time()
+            elapsed = sampled_at - self._last_sample_at if self._last_sample_at is not None else 1.0
+            weight = elapsed if 0 < elapsed <= 3.0 else 1.0
+            self._last_sample_at = sampled_at
             if self._window_start is None:
-                self._window_start = int(time.time())
+                self._window_start = int(sampled_at)
                 self._next_flush_at = time.monotonic() + self.flush_interval
-            self._cpu_s += float(metrics.cpu_percent)
-            self._cpu_n += 1
-            self._mem_s += float(metrics.memory_used)
-            self._mem_n += 1
+            self._cpu_s += float(metrics.cpu_percent) * weight
+            self._cpu_n += weight
+            self._mem_s += float(metrics.memory_used) * weight
+            self._mem_n += weight
             if metrics.system_power is not None:
-                self._pwr_s += float(metrics.system_power)
-                self._pwr_n += 1
+                self._pwr_s += float(metrics.system_power) * weight
+                self._pwr_n += weight
             if time.monotonic() >= (self._next_flush_at or float("inf")):
                 self._flush_locked()
             self._maybe_rotate_locked()
@@ -137,13 +141,14 @@ class SummaryStore:
         if self._cpu_n == 0 or self._window_start is None:
             return
         row = {
+            "schema": 2,
             "ts": self._window_start,
             "cpu_s": _round(self._cpu_s),
-            "cpu_n": self._cpu_n,
+            "cpu_n": _round(self._cpu_n),
             "mem_s": _round(self._mem_s, 1),
-            "mem_n": self._mem_n,
+            "mem_n": _round(self._mem_n),
             "pwr_s": _round(self._pwr_s),
-            "pwr_n": self._pwr_n,
+            "pwr_n": _round(self._pwr_n),
         }
         line = json.dumps(row, separators=(",", ":")) + "\n"
         if self._write_ok:
@@ -253,7 +258,9 @@ class SummaryStore:
             oldest: Optional[int] = None
             for r in rows:
                 ts = r.get("ts")
-                if ts is None or ts < cutoff:
+                # Earlier rows counted samples rather than elapsed time and
+                # used a different CPU metric. Do not mix the two contracts.
+                if r.get("schema") != 2 or ts is None or ts < cutoff:
                     continue
                 cpu_s += r.get("cpu_s", 0)
                 cpu_n += r.get("cpu_n", 0)

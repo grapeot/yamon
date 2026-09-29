@@ -4,7 +4,7 @@ import * as echarts from 'echarts'
 interface GpuChartProps {
   gpuUsage: number | null
   gpuFreqMhz: number | null
-  history: number[]
+  history: (number | null)[]
 }
 
 export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
@@ -30,7 +30,7 @@ export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, gpuUsage || 0].slice(-120)
+    const updatedHistory = history
 
     chartInstance.current.setOption({
       title: {
@@ -90,8 +90,8 @@ export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
   }, [gpuUsage, gpuFreqMhz, history])
 
   const titleText = gpuFreqMhz !== null
-    ? `GPU Usage: ${(gpuUsage || 0).toFixed(1)}% (${gpuFreqMhz.toFixed(0)} MHz)`
-    : `GPU Usage: ${(gpuUsage || 0).toFixed(1)}%`
+    ? `GPU Usage: ${gpuUsage === null ? '—' : gpuUsage.toFixed(1) + '%'} (${gpuFreqMhz.toFixed(0)} MHz)`
+    : `GPU Usage: ${gpuUsage === null ? '—' : gpuUsage.toFixed(1) + '%'}`
 
   return (
     <div className="chart-container">
@@ -110,4 +110,3 @@ export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
     </div>
   )
 }
-

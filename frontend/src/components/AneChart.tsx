@@ -3,7 +3,7 @@ import * as echarts from 'echarts'
 
 interface AneChartProps {
   aneUsage: number | null
-  history: number[]
+  history: (number | null)[]
 }
 
 export function AneChart({ aneUsage, history }: AneChartProps) {
@@ -29,7 +29,7 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, aneUsage || 0].slice(-120)
+    const updatedHistory = history
 
     chartInstance.current.setOption({
       title: {
@@ -99,10 +99,9 @@ export function AneChart({ aneUsage, history }: AneChartProps) {
         WebkitUserSelect: 'text',
         cursor: 'text'
       }}>
-        ANE Usage: {(aneUsage || 0).toFixed(1)}%
+        ANE Usage: {aneUsage === null ? '—' : `${aneUsage.toFixed(1)}%`}
       </div>
       <div ref={chartRef} style={{ width: '100%', height: '300px' }}></div>
     </div>
   )
 }
-
