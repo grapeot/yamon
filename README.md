@@ -116,6 +116,18 @@ Yamon bridges the gap between low-level hardware counters and high-level visuali
 2.  **Server (FastAPI)**: Aggregates metrics and broadcasts them via efficient WebSocket streams.
 3.  **Frontend (React)**: High-performance canvas rendering for dense data visualization.
 
+## 📈 Multi-Day Averages
+
+Yamon records per-minute aggregates of CPU, memory used, and system power to a
+single JSONL file and shows rolling 3/7/14-day averages in the dashboard header.
+
+- Data file: `~/Library/Application Support/yamon/summary.jsonl` (override the
+  directory with the `YAMON_DATA_DIR` environment variable)
+- Auto-rotate: rows older than 21 days are dropped on startup and hourly; a
+  hard 20 MB cap drops the oldest rows if the file ever exceeds it
+- Disk cost: one small append per minute (~150 KB/day)
+- Averages only cover time while Yamon is running and the machine is awake
+
 ## 🔋 Power Monitoring Accuracy
 Yamon leverages the `mach_task_self()` iteration method to interface with the hardware SMC. This allows it to read the **System Total Power (PSTR)** sensor with high precision, bypassing standard permission restrictions found in other tools.
 

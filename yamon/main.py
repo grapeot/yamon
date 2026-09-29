@@ -6,18 +6,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pathlib import Path
 from contextlib import asynccontextmanager
+import asyncio
 import os
 
 # Import from yamon package
 from yamon.api import metrics, websocket
+from yamon.summary import summary_store
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理：启动和停止后台任务"""
+    # 启动时：清理 summary 文件中超出的旧数据（auto-rotate）
+    await asyncio.to_thread(summary_store.rotate_if_needed, True)
     # 启动时：启动后台数据收集任务
     await websocket.start_background_collector()
     yield
-    # 关闭时：清理资源（如果需要）
+    # 关闭时：把当前未满一分钟的累计数据落盘
+    summary_store.flush()
+    # 清理资源（如果需要）
 
 app = FastAPI(title="Yamon API", version="1.0.0", lifespan=lifespan)
 

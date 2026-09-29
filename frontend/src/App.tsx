@@ -6,6 +6,7 @@ import { NetworkChart } from './components/NetworkChart'
 import { PowerChart } from './components/PowerChart'
 import { GpuChart } from './components/GpuChart'
 import { AneChart } from './components/AneChart'
+import { SummaryStrip } from './components/SummaryStrip'
 import './App.css'
 
 // Define types inline to avoid import issues
@@ -90,6 +91,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <h1>Yamon - Mac System Monitor</h1>
+        <SummaryStrip />
         <div className={`status ${connected ? 'connected' : 'disconnected'}`}>
           {connected ? '● Connected' : '○ Disconnected'}
         </div>

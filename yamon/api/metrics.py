@@ -1,12 +1,16 @@
 """Metrics API endpoints"""
 
+import asyncio
+
 from fastapi import APIRouter
 try:
     from yamon.collectors.collector import MetricsCollector
     from yamon.history import MetricsHistory
+    from yamon.summary import summary_store
 except ImportError:
     from collectors.collector import MetricsCollector
     from history import MetricsHistory
+    from summary import summary_store
 from typing import Optional
 
 router = APIRouter()
@@ -72,6 +76,11 @@ async def get_metrics():
         "gpu_freq_mhz": metrics.gpu_freq_mhz,
         "ane_usage": metrics.ane_usage,
     }
+
+@router.get("/summary")
+async def get_summary():
+    """滚动窗口平均值：最近 3/7/14 天的 CPU / memory used / system power"""
+    return await asyncio.to_thread(summary_store.get_windows, [3, 7, 14])
 
 @router.get("/history")
 async def get_history():
