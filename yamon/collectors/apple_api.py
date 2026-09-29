@@ -23,6 +23,8 @@ class AppleMetrics:
     gpu_usage: Optional[float] = None  # GPU hardware active residency, 0-100
     gpu_freq_mhz: Optional[float] = None
     ane_usage: Optional[float] = None
+    cpu_temp_c: Optional[float] = None
+    gpu_temp_c: Optional[float] = None
 
 
 def _number(value):
@@ -75,8 +77,19 @@ class AppleAPICollector:
                 value is not None for value in
                 (result.cpu_power, result.gpu_power, result.ane_power)
             ):
+                result.cpu_temp_c, result.gpu_temp_c = self._temperatures()
                 return result
-        return self._collect_via_ioreport()
+        result = self._collect_via_ioreport() or AppleMetrics()
+        result.cpu_temp_c, result.gpu_temp_c = self._temperatures()
+        return result
+
+    def _temperatures(self):
+        if self._smc is None:
+            return (None, None)
+        try:
+            return self._smc.get_temperatures()
+        except Exception:
+            return (None, None)
 
     def _system_power(self):
         if self._smc is None:

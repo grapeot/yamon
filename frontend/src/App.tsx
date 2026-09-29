@@ -6,6 +6,7 @@ import { PowerChart } from './components/PowerChart'
 import { GpuChart } from './components/GpuChart'
 import { AneChart } from './components/AneChart'
 import { SummaryStrip } from './components/SummaryStrip'
+import { TemperatureChart } from './components/TemperatureChart'
 import './App.css'
 
 function App() {
@@ -82,6 +83,15 @@ function App() {
                 gpuHistory={history.gpu_power}
                 aneHistory={history.ane_power}
                 systemHistory={history.system_power}
+              />
+            </div>
+
+            <div className="metric-section">
+              <TemperatureChart
+                cpuTempC={typedMetrics.cpu_temp_c}
+                gpuTempC={typedMetrics.gpu_temp_c}
+                cpuHistory={history.cpu_temp_c}
+                gpuHistory={history.gpu_temp_c}
               />
             </div>
           </div>

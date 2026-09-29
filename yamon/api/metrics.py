@@ -41,4 +41,6 @@ async def get_history():
         "system_power": h.system_power.get_values(),
         "gpu_usage": h.gpu_usage.get_values(),
         "ane_usage": h.ane_usage.get_values(),
+        "cpu_temp_c": h.cpu_temp_c.get_values(),
+        "gpu_temp_c": h.gpu_temp_c.get_values(),
     }

@@ -53,6 +53,12 @@ class BuildPyWithFrontend(build_py):
                     if static_dir.exists():
                         shutil.rmtree(static_dir)
                     shutil.copytree(dist_dir, static_dir)
+                    # build/lib survives repeated wheel builds in one checkout.
+                    # Clear its previous frontend hashes before build_py copies
+                    # the current bundle, or the wheel retains obsolete assets.
+                    built_static_dir = Path(self.build_lib) / "yamon" / "static"
+                    if built_static_dir.exists():
+                        shutil.rmtree(built_static_dir)
                     print(f"Frontend built and copied to {static_dir}")
                 else:
                     print("Warning: frontend/dist not found after build")
@@ -73,4 +79,3 @@ class BuildPyWithFrontend(build_py):
 # The actual package metadata is in pyproject.toml
 if __name__ == "__main__":
     setup(cmdclass={"build_py": BuildPyWithFrontend})
-

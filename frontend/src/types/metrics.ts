@@ -23,6 +23,8 @@ export interface SystemMetrics {
   gpu_usage: number | null
   gpu_freq_mhz: number | null
   ane_usage: number | null
+  cpu_temp_c: number | null
+  gpu_temp_c: number | null
 }
 
 export interface HistoryData {
@@ -36,4 +38,6 @@ export interface HistoryData {
   system_power: number[]
   gpu_usage: number[]
   ane_usage: number[]
+  cpu_temp_c: (number | null)[]
+  gpu_temp_c: (number | null)[]
 }
