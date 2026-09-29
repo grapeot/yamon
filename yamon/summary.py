@@ -11,6 +11,7 @@ The file is the only durable state; losing it loses nothing critical.
 """
 
 import json
+import math
 import os
 import pwd
 import threading
@@ -92,6 +93,8 @@ class SummaryStore:
         self._mem_n = 0
         self._pwr_s = 0.0
         self._pwr_n = 0
+        self._temp_s = 0.0
+        self._temp_n = 0.0
         self._last_sample_at: Optional[float] = None
         self._window_start: Optional[int] = None
         self._next_flush_at: Optional[float] = None
@@ -127,6 +130,12 @@ class SummaryStore:
             if metrics.system_power is not None:
                 self._pwr_s += float(metrics.system_power) * weight
                 self._pwr_n += weight
+            cpu_temp = getattr(metrics, "cpu_temp_c", None)
+            gpu_temp = getattr(metrics, "gpu_temp_c", None)
+            if (cpu_temp is not None and gpu_temp is not None
+                    and math.isfinite(cpu_temp) and math.isfinite(gpu_temp)):
+                self._temp_s += (cpu_temp + gpu_temp) / 2 * weight
+                self._temp_n += weight
             if time.monotonic() >= (self._next_flush_at or float("inf")):
                 self._flush_locked()
             self._maybe_rotate_locked()
@@ -141,7 +150,7 @@ class SummaryStore:
         if self._cpu_n == 0 or self._window_start is None:
             return
         row = {
-            "schema": 2,
+            "schema": 3,
             "ts": self._window_start,
             "cpu_s": _round(self._cpu_s),
             "cpu_n": _round(self._cpu_n),
@@ -149,6 +158,8 @@ class SummaryStore:
             "mem_n": _round(self._mem_n),
             "pwr_s": _round(self._pwr_s),
             "pwr_n": _round(self._pwr_n),
+            "temp_s": _round(self._temp_s),
+            "temp_n": _round(self._temp_n),
         }
         line = json.dumps(row, separators=(",", ":")) + "\n"
         if self._write_ok:
@@ -174,6 +185,8 @@ class SummaryStore:
         self._mem_n = 0
         self._pwr_s = 0.0
         self._pwr_n = 0
+        self._temp_s = 0.0
+        self._temp_n = 0
         self._window_start = None
 
     def _maybe_rotate_locked(self) -> None:
@@ -247,20 +260,20 @@ class SummaryStore:
 
     # ------------------------------------------------------------------- read
 
-    def get_windows(self, days_list: Sequence[int]) -> dict:
-        """Average CPU / memory used / system power over trailing windows."""
+    def get_windows(self, window_seconds: Sequence[int]) -> dict:
+        """Time-weighted averages over trailing windows measured in seconds."""
         now = int(time.time())
         rows = self._load_rows()
         windows = []
-        for d in days_list:
-            cutoff = now - d * 86400
-            cpu_s = cpu_n = mem_s = mem_n = pwr_s = pwr_n = 0
+        for seconds in window_seconds:
+            cutoff = now - seconds
+            cpu_s = cpu_n = mem_s = mem_n = pwr_s = pwr_n = temp_s = temp_n = 0
             oldest: Optional[int] = None
             for r in rows:
                 ts = r.get("ts")
                 # Earlier rows counted samples rather than elapsed time and
                 # used a different CPU metric. Do not mix the two contracts.
-                if r.get("schema") != 2 or ts is None or ts < cutoff:
+                if r.get("schema") not in (2, 3) or ts is None or ts < cutoff or ts > now:
                     continue
                 cpu_s += r.get("cpu_s", 0)
                 cpu_n += r.get("cpu_n", 0)
@@ -268,16 +281,22 @@ class SummaryStore:
                 mem_n += r.get("mem_n", 0)
                 pwr_s += r.get("pwr_s", 0)
                 pwr_n += r.get("pwr_n", 0)
+                if r.get("schema") == 3:
+                    temp_s += r.get("temp_s", 0)
+                    temp_n += r.get("temp_n", 0)
                 if oldest is None or ts < oldest:
                     oldest = ts
             windows.append({
-                "days": d,
+                "window_seconds": seconds,
+                "days": seconds / 86400,
                 "cpu_percent": _round(cpu_s / cpu_n, 1) if cpu_n else None,
                 "memory_used_gb": _round(mem_s / mem_n / 2**30, 1) if mem_n else None,
                 "system_power_w": _round(pwr_s / pwr_n, 1) if pwr_n else None,
+                "temperature_c": _round(temp_s / temp_n, 1) if temp_n else None,
                 "samples": cpu_n,
                 "mem_samples": mem_n,
                 "pwr_samples": pwr_n,
+                "temp_samples": temp_n,
                 "oldest_ts": oldest,
             })
         return {"generated_at": now, "windows": windows}

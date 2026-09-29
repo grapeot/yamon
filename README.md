@@ -188,10 +188,14 @@ Yamon bridges the gap between low-level hardware counters and high-level visuali
 2.  **Server (FastAPI)**: Aggregates metrics and broadcasts them via efficient WebSocket streams.
 3.  **Frontend (React)**: High-performance canvas rendering for dense data visualization.
 
-## 📈 Multi-Day Averages
+## 📈 Rolling Averages
 
-Yamon records per-minute aggregates of CPU, memory used, and system power to a
-single JSONL file and shows rolling 3/7/14-day averages at the bottom of the dashboard.
+Yamon records per-minute aggregates of CPU usage, memory used, system power,
+and temperature to a single JSONL file. The footer shows observed-time
+averages for the past 1 hour, 1 day, 3 days, 7 days, and 14 days. Each
+temperature sample is the arithmetic mean of the CPU and GPU sensor averages;
+if either sensor is unavailable, that sample does not enter the temperature
+average.
 
 - Data file: `~/Library/Application Support/yamon/summary.jsonl` (override the
   directory with the `YAMON_DATA_DIR` environment variable)
@@ -199,6 +203,10 @@ single JSONL file and shows rolling 3/7/14-day averages at the bottom of the das
   hard 20 MB cap drops the oldest rows if the file ever exceeds it
 - Disk cost: one small append per minute (~150 KB/day)
 - Averages only cover time while Yamon is running and the machine is awake
+- Existing rows from before temperature recording still contribute CPU,
+  memory, and power averages. Temperature history starts when this version runs.
+- The 1-hour column appears after one recorded hour. Longer windows appear
+  after one recorded day and mark shorter coverage as partial.
 
 ## 🔋 Power Monitoring Accuracy
 Yamon reads the SMC `PSTR` key for system power when available. Component

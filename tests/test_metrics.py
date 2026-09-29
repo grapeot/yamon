@@ -102,9 +102,47 @@ def test_summary_uses_elapsed_coverage_and_skips_legacy(tmp_path, monkeypatch):
         cpu_percent=40, memory_used=2**30, system_power=None, sampled_at=clock["time"],
     ))
     store.flush()
-    window = store.get_windows([3])["windows"][0]
+    window = store.get_windows([3 * 86400])["windows"][0]
     assert window["samples"] == 3
     assert window["cpu_percent"] == 33.3
     assert window["system_power_w"] == 10
     assert window["pwr_samples"] == 1
     assert window["memory_used_gb"] == 1.0
+    assert window["temperature_c"] is None
+
+
+def test_temperature_average_and_legacy_summary_compatibility(tmp_path, monkeypatch):
+    clock = {"time": 1_800_000_000.0, "mono": 10.0}
+    monkeypatch.setattr("yamon.summary.time.time", lambda: clock["time"])
+    monkeypatch.setattr("yamon.summary.time.monotonic", lambda: clock["mono"])
+    path = tmp_path / "summary.jsonl"
+    path.write_text(
+        '{"schema":2,"ts":1799992800,"cpu_s":200,"cpu_n":2,'
+        '"mem_s":2147483648,"mem_n":2,"pwr_s":40,"pwr_n":2}\n'
+    )
+    store = SummaryStore(path=path, flush_interval=60)
+
+    def sample(cpu, cpu_temp, gpu_temp, power):
+        return SimpleNamespace(
+            cpu_percent=cpu, memory_used=2**30, system_power=power,
+            cpu_temp_c=cpu_temp, gpu_temp_c=gpu_temp, sampled_at=clock["time"],
+        )
+
+    store.tick(sample(10, 60, 40, 10))  # 50°C for one observed second
+    clock["time"] += 2
+    clock["mono"] += 2
+    store.tick(sample(40, 80, 60, None))  # 70°C for two observed seconds
+    clock["time"] += 1
+    clock["mono"] += 1
+    store.tick(sample(30, None, 50, 30))  # excluded from temperature only
+    store.flush()
+
+    short, long = store.get_windows([3600, 3 * 86400])["windows"]
+    assert (short["window_seconds"], long["window_seconds"]) == (3600, 3 * 86400)
+    assert short["temperature_c"] == long["temperature_c"] == 63.3
+    assert short["temp_samples"] == long["temp_samples"] == 3
+    assert short["cpu_percent"] == 30.0
+    assert short["samples"] == 4
+    assert long["cpu_percent"] == 53.3  # schema 2 CPU stays in the long window
+    assert long["samples"] == 6
+    assert long["pwr_samples"] == 4

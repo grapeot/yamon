@@ -1,22 +1,51 @@
 import { useEffect, useState } from 'react'
 
 interface WindowSummary {
-  days: number
+  window_seconds: number
   cpu_percent: number | null
   memory_used_gb: number | null
   system_power_w: number | null
+  temperature_c: number | null
   samples: number
   mem_samples: number
   pwr_samples: number
-  oldest_ts: number | null
+  temp_samples: number
 }
 
-// Schema 2 sample counts are observed seconds, not the number of collector calls.
-const MIN_COVERED_SECONDS = 86400
+const WINDOWS = [
+  { seconds: 3600, label: '1H' },
+  { seconds: 86400, label: '1D' },
+  { seconds: 3 * 86400, label: '3D' },
+  { seconds: 7 * 86400, label: '7D' },
+  { seconds: 14 * 86400, label: '14D' },
+] as const
 
 function fmt(value: number | null, unit: string): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
   return `${value.toFixed(1)}${unit}`
+}
+
+function summaryCell(
+  window: WindowSummary | undefined,
+  value: (item: WindowSummary) => number | null,
+  sampleSeconds: (item: WindowSummary) => number,
+  unit: string,
+  key: string,
+) {
+  const recorded = window ? sampleSeconds(window) : 0
+  // 1H needs a complete hour; longer windows need at least one recorded day.
+  if (!window || recorded < Math.min(window.window_seconds, 86400)) {
+    return <span key={key} className="summary-value dim">—</span>
+  }
+  const partial = recorded < window.window_seconds * 0.99
+  const coverage = `${(recorded / 86400).toFixed(1)}d`
+  return <span key={key} className="summary-value">
+    {fmt(value(window), unit)}
+    {partial && <span className="summary-partial"
+      title={`recorded ${coverage} of ${window.window_seconds / 86400} days`}>
+      {coverage}
+    </span>}
+  </span>
 }
 
 export function SummaryStrip() {
@@ -31,7 +60,7 @@ export function SummaryStrip() {
         const json = await res.json()
         if (!cancelled && Array.isArray(json.windows)) setWindows(json.windows)
       } catch {
-        // 保持上一次成功的数据
+        // Keep the last successful values during a transient failure.
       }
     }
     load()
@@ -42,56 +71,19 @@ export function SummaryStrip() {
     }
   }, [])
 
-  const byDays = (d: number) => windows?.find((w) => w.days === d)
+  const bySeconds = (seconds: number) => windows?.find((w) => w.window_seconds === seconds)
+  const row = (label: string, value: (w: WindowSummary) => number | null,
+    samples: (w: WindowSummary) => number, unit: string) => <>
+    <span className="summary-label" role="rowheader">{label}</span>
+    {WINDOWS.map(({ seconds }) => summaryCell(bySeconds(seconds), value, samples, unit, `${label}-${seconds}`))}
+  </>
 
-  const cell = (
-    w: WindowSummary | undefined,
-    get: (x: WindowSummary) => number | null,
-    unit: string,
-    getSamples: (x: WindowSummary) => number
-  ) => {
-    if (!w || getSamples(w) < MIN_COVERED_SECONDS) {
-      return <span className="summary-value dim">—</span>
-    }
-    const coveredDays = getSamples(w) / 86400
-    const partial = coveredDays < w.days - 0.5
-    return (
-      <span className="summary-value">
-        {fmt(get(w), unit)}
-        {partial && (
-          <span className="summary-partial" title={`recorded ${coveredDays.toFixed(1)} of ${w.days} days`}>
-            {Math.max(1, Math.round(coveredDays))}d
-          </span>
-        )}
-      </span>
-    )
-  }
-
-  const w3 = byDays(3)
-  const w7 = byDays(7)
-  const w14 = byDays(14)
-
-  return (
-    <div className="summary-strip" role="table" aria-label="Multi-day averages">
-      <span className="summary-label" role="rowheader">AVG</span>
-      <span className="summary-head" role="columnheader">3D</span>
-      <span className="summary-head" role="columnheader">7D</span>
-      <span className="summary-head" role="columnheader">14D</span>
-
-      <span className="summary-label" role="rowheader">CPU</span>
-      {cell(w3, (x) => x.cpu_percent, '%', (x) => x.samples)}
-      {cell(w7, (x) => x.cpu_percent, '%', (x) => x.samples)}
-      {cell(w14, (x) => x.cpu_percent, '%', (x) => x.samples)}
-
-      <span className="summary-label" role="rowheader">MEM</span>
-      {cell(w3, (x) => x.memory_used_gb, 'G', (x) => x.mem_samples)}
-      {cell(w7, (x) => x.memory_used_gb, 'G', (x) => x.mem_samples)}
-      {cell(w14, (x) => x.memory_used_gb, 'G', (x) => x.mem_samples)}
-
-      <span className="summary-label" role="rowheader">PWR</span>
-      {cell(w3, (x) => x.system_power_w, 'W', (x) => x.pwr_samples)}
-      {cell(w7, (x) => x.system_power_w, 'W', (x) => x.pwr_samples)}
-      {cell(w14, (x) => x.system_power_w, 'W', (x) => x.pwr_samples)}
-    </div>
-  )
+  return <div className="summary-strip" role="table" aria-label="Multi-window averages">
+    <span className="summary-label" role="rowheader">AVG</span>
+    {WINDOWS.map(({ seconds, label }) => <span key={seconds} className="summary-head" role="columnheader">{label}</span>)}
+    {row('CPU', (w) => w.cpu_percent, (w) => w.samples, '%')}
+    {row('MEM', (w) => w.memory_used_gb, (w) => w.mem_samples, 'G')}
+    {row('PWR', (w) => w.system_power_w, (w) => w.pwr_samples, 'W')}
+    {row('TEMP', (w) => w.temperature_c, (w) => w.temp_samples, '°C')}
+  </div>
 }
