@@ -31,8 +31,8 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedSentHistory = [...sentHistory, sentRate].slice(-120)
-    const updatedRecvHistory = [...recvHistory, recvRate].slice(-120)
+    const updatedSentHistory = sentHistory
+    const updatedRecvHistory = recvHistory
 
     const formatBytes = (bytes: number): string => {
       const units = ['B', 'KB', 'MB', 'GB']
@@ -51,9 +51,9 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
       },
       tooltip: {
         trigger: 'axis',
-        formatter: (params: any) => {
+        formatter: (params: unknown) => {
           let result = ''
-          params.forEach((param: any) => {
+          ;(params as { seriesName: string; value: number }[]).forEach((param) => {
             result += `${param.seriesName}: ${formatBytes(param.value)}<br/>`
           })
           return result
@@ -178,4 +178,3 @@ export function NetworkChart({ sentRate, recvRate, sentHistory, recvHistory }: N
     </div>
   )
 }
-

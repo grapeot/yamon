@@ -3,12 +3,12 @@ import * as echarts from 'echarts'
 
 interface MemoryChartProps {
   memoryPercent: number
-  memoryUsed: number
   memoryTotal: number
   history: number[]
+  usedHistory: number[]
 }
 
-export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChartProps) {
+export function MemoryChart({ memoryPercent, memoryTotal, history, usedHistory }: MemoryChartProps) {
   const chartRef = useRef<HTMLDivElement>(null)
   const chartInstance = useRef<echarts.ECharts | null>(null)
 
@@ -31,7 +31,7 @@ export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChart
   useEffect(() => {
     if (!chartInstance.current) return
 
-    const updatedHistory = [...history, memoryPercent].slice(-120)
+    const updatedHistory = history
 
     chartInstance.current.setOption({
       title: {
@@ -39,9 +39,10 @@ export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChart
       },
       tooltip: {
         trigger: 'axis',
-        formatter: (params: any) => {
-          const value = params[0].value
-          const usedMB = (memoryTotal * value / 100 / 1024 / 1024).toFixed(0)
+        formatter: (params: unknown) => {
+          const point = (params as { value: number; dataIndex: number }[])[0]
+          const value = point.value
+          const usedMB = (usedHistory[point.dataIndex] / 1024 / 1024).toFixed(0)
           const totalMB = (memoryTotal / 1024 / 1024).toFixed(0)
           return `${value.toFixed(1)}%<br/>Used: ${usedMB} MB / ${totalMB} MB`
         },
@@ -94,7 +95,7 @@ export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChart
         },
       ],
     })
-  }, [memoryPercent, memoryTotal, history])
+  }, [memoryPercent, memoryTotal, history, usedHistory])
 
   return (
     <div className="chart-container">
@@ -113,4 +114,3 @@ export function MemoryChart({ memoryPercent, memoryTotal, history }: MemoryChart
     </div>
   )
 }
-

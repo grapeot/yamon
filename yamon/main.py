@@ -46,8 +46,8 @@ app.include_router(websocket.router, prefix="/ws", tags=["websocket"])
 # 静态文件服务（生产环境）
 # 尝试多个可能的静态文件目录路径
 possible_static_dirs = [
-    Path(__file__).parent / "static",  # 从 yamon 包目录（安装后）
     Path(__file__).parent.parent / "frontend" / "dist",  # 从项目根目录（开发环境）
+    Path(__file__).parent / "static",  # 从 yamon 包目录（安装后）
     Path(__file__).parent.parent.parent / "frontend" / "dist",  # 从项目根目录（另一种情况）
 ]
 
@@ -85,4 +85,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

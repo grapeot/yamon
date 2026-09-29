@@ -4,8 +4,10 @@ export interface SystemMetrics {
   cpu_percent: number
   cpu_per_core: number[]
   cpu_count: number
-  cpu_p_percent: number
-  cpu_e_percent: number
+  cpu_p_percent: number | null
+  cpu_e_percent: number | null
+  cpu_p_count: number | null
+  cpu_e_count: number | null
   pcpu_freq_mhz: number | null
   ecpu_freq_mhz: number | null
   memory_percent: number

@@ -11,8 +11,8 @@ interface WindowSummary {
   oldest_ts: number | null
 }
 
-// 不足一整天的样本量时不显示数值（避免把几小时的均值当成 3 天均值）
-const MIN_SAMPLES_PER_DAY = 86400
+// Schema 2 sample counts are observed seconds, not the number of collector calls.
+const MIN_COVERED_SECONDS = 86400
 
 function fmt(value: number | null, unit: string): string {
   if (value === null || value === undefined || Number.isNaN(value)) return '—'
@@ -50,11 +50,10 @@ export function SummaryStrip() {
     unit: string,
     getSamples: (x: WindowSummary) => number
   ) => {
-    if (!w || getSamples(w) < MIN_SAMPLES_PER_DAY) {
+    if (!w || getSamples(w) < MIN_COVERED_SECONDS) {
       return <span className="summary-value dim">—</span>
     }
-    const now = Date.now() / 1000
-    const coveredDays = w.oldest_ts !== null ? (now - w.oldest_ts) / 86400 : 0
+    const coveredDays = getSamples(w) / 86400
     const partial = coveredDays < w.days - 0.5
     return (
       <span className="summary-value">
