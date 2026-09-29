@@ -30,7 +30,16 @@ Unlock metrics that standard tools often hide:
 
 ### Install from PyPI (Recommended)
 
-The easiest way to install Yamon:
+Run the latest published Yamon without installing it permanently:
+
+```bash
+uvx yamon
+```
+
+Open **http://127.0.0.1:8000** while it runs; press `Ctrl-C` to stop. `uvx`
+downloads the PyPI package on the first run and reuses its cache later.
+
+To install the command permanently instead:
 
 ```bash
 pip install yamon

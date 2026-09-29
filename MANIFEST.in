@@ -2,4 +2,7 @@ include README.md
 include LICENSE
 recursive-include yamon/static *
 recursive-include frontend/dist *
-
+recursive-include frontend/src *
+recursive-include frontend/public *
+include frontend/package.json frontend/package-lock.json frontend/index.html
+include frontend/vite.config.ts frontend/eslint.config.js frontend/tsconfig*.json
