@@ -67,9 +67,8 @@ class MetricsHistory:
         self.ane_power = HistoryBuffer(max_size)
         self.system_power = HistoryBuffer(max_size)
         
-        # GPU/ANE
+        # GPU usage
         self.gpu_usage = HistoryBuffer(max_size)
-        self.ane_usage = HistoryBuffer(max_size)
 
         # Temperatures; preserve None so missing sensor readings leave gaps.
         self.cpu_temp_c = HistoryBuffer(max_size)
@@ -109,10 +108,8 @@ class MetricsHistory:
         if metrics.system_power is not None:
             self.system_power.add(metrics.system_power)
         
-        # GPU/ANE usage
+        # GPU usage
         if metrics.gpu_usage is not None:
             self.gpu_usage.add(metrics.gpu_usage)
-        if metrics.ane_usage is not None:
-            self.ane_usage.add(metrics.ane_usage)
         self.cpu_temp_c.add(metrics.cpu_temp_c)
         self.gpu_temp_c.add(metrics.gpu_temp_c)

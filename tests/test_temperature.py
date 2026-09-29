@@ -54,7 +54,7 @@ def test_history_keeps_missing_temperature_gaps():
             cpu_percent=1, cpu_per_core=[], memory_percent=1,
             network_sent_rate=0, network_recv_rate=0,
             cpu_power=None, gpu_power=None, ane_power=None, system_power=None,
-            gpu_usage=None, ane_usage=None, cpu_temp_c=cpu, gpu_temp_c=gpu,
+            gpu_usage=None, cpu_temp_c=cpu, gpu_temp_c=gpu,
         ))
     assert history.cpu_temp_c.get_values() == [60.0, None]
     assert history.gpu_temp_c.get_values() == [None, 53.0]

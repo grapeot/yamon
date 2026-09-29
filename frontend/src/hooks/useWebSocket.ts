@@ -23,7 +23,6 @@ export interface SystemMetrics {
   system_power: number | null
   gpu_usage: number | null
   gpu_freq_mhz: number | null
-  ane_usage: number | null
   cpu_temp_c: number | null
   gpu_temp_c: number | null
 }
@@ -41,7 +40,6 @@ interface HistoryData {
   ane_power: (number | null)[]
   system_power: (number | null)[]
   gpu_usage: (number | null)[]
-  ane_usage: (number | null)[]
   cpu_temp_c: (number | null)[]
   gpu_temp_c: (number | null)[]
 }
@@ -49,7 +47,7 @@ interface HistoryData {
 const emptyHistory: HistoryData = {
   cpu_percent: [], cpu_p_percent: [], cpu_e_percent: [], memory_percent: [], memory_used: [],
   network_sent_rate: [], network_recv_rate: [], cpu_power: [], gpu_power: [],
-  ane_power: [], system_power: [], gpu_usage: [], ane_usage: [],
+  ane_power: [], system_power: [], gpu_usage: [],
   cpu_temp_c: [], gpu_temp_c: [],
 }
 
@@ -91,7 +89,6 @@ export function useWebSocket() {
         ane_power: [...prev.ane_power, data.ane_power].slice(-120),
         system_power: [...prev.system_power, data.system_power].slice(-120),
         gpu_usage: [...prev.gpu_usage, data.gpu_usage].slice(-120),
-        ane_usage: [...prev.ane_usage, data.ane_usage].slice(-120),
         cpu_temp_c: [...prev.cpu_temp_c, data.cpu_temp_c].slice(-120),
         gpu_temp_c: [...prev.gpu_temp_c, data.gpu_temp_c].slice(-120),
       }))

@@ -2,7 +2,7 @@
 
 **Beautiful, In-Depth System Monitoring for macOS.**
 
-Yamon (Duck Monitor) is a modern system monitor engineered specifically for Apple Silicon. It goes beyond standard CPU and RAM metrics to show Neural Engine activity, component power estimates, and temperatures in a real-time web interface.
+Yamon (Duck Monitor) is a modern system monitor engineered specifically for Apple Silicon. It goes beyond standard CPU and RAM metrics to show component power estimates and temperatures in a real-time web interface.
 
 ![Yamon Screenshot](docs/screenshot.jpg)
 
@@ -12,7 +12,7 @@ Yamon (Duck Monitor) is a modern system monitor engineered specifically for Appl
 Unlock metrics that standard tools often hide:
 - **Total System Power**: SMC power reading in watts when the sensor is available.
 - **Power Breakdown**: Estimated CPU, GPU, and Neural Engine power in watts.
-- **Neural Engine (ANE)**: Estimated power is shown when available. Current samplers do not provide ANE utilization, so that reading remains unavailable.
+- **Neural Engine (ANE)**: Estimated power is shown in the Power chart when available. ANE utilization is not reported because the available samplers do not provide a verified measurement.
 - **GPU Frequency & Usage**: GPU frequency and hardware active-time percentage when available.
 - **CPU & GPU Temperature**: Average of available SMC temperature sensors in °C, with a live two-minute chart.
 
