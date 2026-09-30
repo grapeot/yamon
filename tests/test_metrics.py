@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import json
 import plistlib
 
 from yamon.api.payload import metric_payload
@@ -109,6 +110,41 @@ def test_summary_uses_elapsed_coverage_and_skips_legacy(tmp_path, monkeypatch):
     assert window["pwr_samples"] == 1
     assert window["memory_used_gb"] == 1.0
     assert window["temperature_c"] is None
+
+
+def test_summary_single_writer_election_and_takeover(tmp_path, monkeypatch):
+    clock = {"time": 1_800_000_000.0, "mono": 10.0}
+    monkeypatch.setattr("yamon.summary.time.time", lambda: clock["time"])
+    monkeypatch.setattr("yamon.summary.time.monotonic", lambda: clock["mono"])
+    path = tmp_path / "summary.jsonl"
+    a = SummaryStore(path=path, flush_interval=60)
+    b = SummaryStore(path=path, flush_interval=60)
+    assert (a.is_writer, b.is_writer) == (True, False)
+
+    def sample(cpu):
+        return SimpleNamespace(cpu_percent=cpu, memory_used=2**30, system_power=10,
+                               sampled_at=clock["time"])
+
+    # The reader instance must not record while the writer holds the lock.
+    a.tick(sample(20))
+    b.tick(sample(99))
+    a.flush()
+    lines = path.read_text().strip().splitlines()
+    assert len(lines) == 1
+    assert json.loads(lines[0])["cpu_s"] == 20
+
+    # Simulate the writer dying: the reader takes over on its next tick.
+    a.release_writer_lock()
+    clock["time"] += 2
+    clock["mono"] += 2
+    b.tick(sample(40))
+    b.flush()
+    assert b.is_writer
+    lines = path.read_text().strip().splitlines()
+    assert len(lines) == 2
+    assert json.loads(lines[1])["cpu_s"] == 40
+    # No double-counted seconds: one row per writer interval.
+    assert b.get_windows([3600])["total_recorded_seconds"] == 2
 
 
 def test_summary_total_recorded_spans_retained_rows(tmp_path, monkeypatch):
