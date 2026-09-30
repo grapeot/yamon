@@ -24,11 +24,7 @@ async def get_metrics():
 
 @router.get("/summary")
 async def get_summary():
-    # TEMPORARY: 300 s (5M) is a short test window so the summary columns can
-    # be verified in minutes instead of an hour. Remove it together with the
-    # frontend 5M column once that verification is done.
-    return await asyncio.to_thread(summary_store.get_windows,
-                                    [300, 3600, 86400, 3 * 86400, 7 * 86400, 14 * 86400])
+    return await asyncio.to_thread(summary_store.get_windows, [3600, 86400, 3 * 86400, 7 * 86400, 14 * 86400])
 
 
 @router.get("/history")

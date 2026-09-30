@@ -18,9 +18,6 @@ interface SummaryPayload {
 }
 
 const WINDOWS = [
-  // TEMPORARY test window: verify the strip in minutes, not an hour.
-  // Remove together with the 300 s window in the backend /api/summary.
-  { seconds: 300, label: '5M' },
   { seconds: 3600, label: '1H' },
   { seconds: 86400, label: '1D' },
   { seconds: 3 * 86400, label: '3D' },
