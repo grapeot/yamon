@@ -12,7 +12,15 @@ interface WindowSummary {
   temp_samples: number
 }
 
+interface SummaryPayload {
+  windows: WindowSummary[]
+  total_recorded_seconds?: number
+}
+
 const WINDOWS = [
+  // TEMPORARY test window: verify the strip in minutes, not an hour.
+  // Remove together with the 300 s window in the backend /api/summary.
+  { seconds: 300, label: '5M' },
   { seconds: 3600, label: '1H' },
   { seconds: 86400, label: '1D' },
   { seconds: 3 * 86400, label: '3D' },
@@ -31,25 +39,31 @@ function summaryCell(
   sampleSeconds: (item: WindowSummary) => number,
   unit: string,
   key: string,
+  totalRecorded: number,
 ) {
   const recorded = window ? sampleSeconds(window) : 0
-  // 1H needs a complete hour; longer windows need at least one recorded day.
-  if (!window || recorded < Math.min(window.window_seconds, 86400)) {
+  // A column appears once its budget of recorded time has accumulated: the
+  // column's own length for 5M/1H, one recorded day for longer windows.
+  // Gating on the cumulative total (not on this window's coverage) keeps the
+  // unflushed minute and sleep gaps from wedging a column at the placeholder.
+  if (!window || totalRecorded < Math.min(window.window_seconds, 86400)) {
     return <span key={key} className="summary-value dim">—</span>
   }
   const partial = recorded < window.window_seconds * 0.99
-  const coverage = `${(recorded / 86400).toFixed(1)}d`
+  const coverage = `${Math.round((recorded / window.window_seconds) * 100)}%`
   return <span key={key} className="summary-value">
     {fmt(value(window), unit)}
     {partial && <span className="summary-partial"
-      title={`recorded ${coverage} of ${window.window_seconds / 86400} days`}>
+      title={`recorded ${(recorded / 3600).toFixed(1)}h of ${(window.window_seconds / 3600).toFixed(1)}h`}>
       {coverage}
     </span>}
   </span>
 }
 
 export function SummaryStrip() {
-  const [windows, setWindows] = useState<WindowSummary[] | null>(null)
+  const [payload, setPayload] = useState<SummaryPayload | null>(null)
+  const windows = payload?.windows ?? null
+  const totalRecorded = payload?.total_recorded_seconds ?? 0
 
   useEffect(() => {
     let cancelled = false
@@ -58,7 +72,9 @@ export function SummaryStrip() {
         const res = await fetch('/api/summary')
         if (!res.ok) return
         const json = await res.json()
-        if (!cancelled && Array.isArray(json.windows)) setWindows(json.windows)
+        if (!cancelled && Array.isArray(json.windows)) {
+          setPayload({ windows: json.windows, total_recorded_seconds: json.total_recorded_seconds })
+        }
       } catch {
         // Keep the last successful values during a transient failure.
       }
@@ -75,7 +91,8 @@ export function SummaryStrip() {
   const row = (label: string, value: (w: WindowSummary) => number | null,
     samples: (w: WindowSummary) => number, unit: string) => <>
     <span className="summary-label" role="rowheader">{label}</span>
-    {WINDOWS.map(({ seconds }) => summaryCell(bySeconds(seconds), value, samples, unit, `${label}-${seconds}`))}
+    {WINDOWS.map(({ seconds }) => summaryCell(bySeconds(seconds), value, samples, unit,
+      `${label}-${seconds}`, totalRecorded))}
   </>
 
   return <div className="summary-strip" role="table" aria-label="Multi-window averages">

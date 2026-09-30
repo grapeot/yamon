@@ -111,6 +111,33 @@ def test_summary_uses_elapsed_coverage_and_skips_legacy(tmp_path, monkeypatch):
     assert window["temperature_c"] is None
 
 
+def test_summary_total_recorded_spans_retained_rows(tmp_path, monkeypatch):
+    clock = {"time": 1_800_000_000.0, "mono": 10.0}
+    monkeypatch.setattr("yamon.summary.time.time", lambda: clock["time"])
+    monkeypatch.setattr("yamon.summary.time.monotonic", lambda: clock["mono"])
+    path = tmp_path / "summary.jsonl"
+    # Legacy row (no schema) is ignored; the 3600 s row is ~5.1 h old: outside
+    # the 1H window but inside 3D and inside the cumulative total.
+    path.write_text(
+        '{"ts":1799999999,"cpu_s":200,"cpu_n":1,"mem_s":0,"mem_n":1,"pwr_s":0,"pwr_n":1}\n'
+        '{"schema":2,"ts":1799981600,"cpu_s":72000,"cpu_n":3600,'
+        '"mem_s":0,"mem_n":3600,"pwr_s":0,"pwr_n":3600}\n'
+    )
+    store = SummaryStore(path=path, flush_interval=60)
+    sample = SimpleNamespace(cpu_percent=20, memory_used=2**30, system_power=10, sampled_at=clock["time"])
+    store.tick(sample)
+    clock["time"] += 2
+    clock["mono"] += 2
+    store.tick(SimpleNamespace(
+        cpu_percent=40, memory_used=2**30, system_power=None, sampled_at=clock["time"],
+    ))
+    store.flush()
+    out = store.get_windows([3600, 3 * 86400])
+    assert out["total_recorded_seconds"] == 3603
+    assert out["windows"][0]["samples"] == 3  # 1H window only sees the fresh row
+    assert out["windows"][1]["samples"] == 3603  # 3D window sees both
+
+
 def test_temperature_average_and_legacy_summary_compatibility(tmp_path, monkeypatch):
     clock = {"time": 1_800_000_000.0, "mono": 10.0}
     monkeypatch.setattr("yamon.summary.time.time", lambda: clock["time"])

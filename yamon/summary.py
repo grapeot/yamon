@@ -264,6 +264,15 @@ class SummaryStore:
         """Time-weighted averages over trailing windows measured in seconds."""
         now = int(time.time())
         rows = self._load_rows()
+        # Cumulative recorded seconds across the whole retained file. Callers
+        # gate their display on this, not on per-window coverage, so the
+        # unflushed minute and sleep gaps never wedge a window shut.
+        total_recorded = 0
+        for r in rows:
+            ts = r.get("ts")
+            if r.get("schema") not in (2, 3) or ts is None or ts > now:
+                continue
+            total_recorded += r.get("cpu_n", 0)
         windows = []
         for seconds in window_seconds:
             cutoff = now - seconds
@@ -299,7 +308,11 @@ class SummaryStore:
                 "temp_samples": temp_n,
                 "oldest_ts": oldest,
             })
-        return {"generated_at": now, "windows": windows}
+        return {
+            "generated_at": now,
+            "total_recorded_seconds": total_recorded,
+            "windows": windows,
+        }
 
     def _load_rows(self, _retry: bool = True) -> List[dict]:
         try:
