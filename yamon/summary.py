@@ -6,10 +6,14 @@ auto-rotates that file so disk usage stays bounded:
 - time-based retention: rows older than RETENTION_DAYS are dropped
 - hard size cap: if the file ever exceeds MAX_BYTES, oldest rows are dropped
 - rotation is an atomic rewrite (temp file + os.replace)
+- writer election: a flock on a sidecar lock file makes exactly one process
+  append rows; instances sharing a data dir stay read-only instead of
+  double-recording
 
 The file is the only durable state; losing it loses nothing critical.
 """
 
+import fcntl
 import json
 import math
 import os
@@ -104,6 +108,57 @@ class SummaryStore:
         # read cache (key = mtime_ns + size; rows are never mutated after load)
         self._cache_key = None
         self._cache_rows: List[dict] = []
+        # writer election (see module docstring): a flock on a sidecar file
+        # keeps at most one process appending rows to this path
+        self._lock_path = self.path.with_name(self.path.name + ".lock")
+        self._writer_fd: Optional[int] = None
+        self._is_writer = False
+        self._reader_noted = False
+        self._try_become_writer()
+
+    # ------------------------------------------------------ writer election
+
+    def _try_become_writer(self) -> None:
+        """Try to take the writer lock; read-only while someone else holds it."""
+        with self._lock:
+            if self._is_writer:
+                return
+            try:
+                fd = os.open(self._lock_path, os.O_RDWR | os.O_CREAT, 0o644)
+            except OSError as e:
+                print(f"yamon summary: cannot open {self._lock_path}: {e}; read-only")
+                return
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                os.close(fd)
+                if not self._reader_noted:
+                    print("yamon summary: another yamon instance is recording; "
+                          "this instance reads its summary rows (read-only)")
+                    self._reader_noted = True
+                return
+            self._writer_fd = fd
+            self._is_writer = True
+            _chown_to_invoking_user(self._lock_path)
+
+    @property
+    def is_writer(self) -> bool:
+        return self._is_writer
+
+    def release_writer_lock(self) -> None:
+        """Release the writer lock (shutdown, or tests simulating a crash)."""
+        with self._lock:
+            if self._writer_fd is not None:
+                try:
+                    fcntl.flock(self._writer_fd, fcntl.LOCK_UN)
+                except OSError:
+                    pass
+                try:
+                    os.close(self._writer_fd)
+                except OSError:
+                    pass
+                self._writer_fd = None
+            self._is_writer = False
 
     def _read_size(self) -> int:
         try:
@@ -115,6 +170,10 @@ class SummaryStore:
 
     def tick(self, metrics) -> None:
         """Accumulate observed awake time; never count a long sleep gap."""
+        if not self._is_writer:
+            self._try_become_writer()
+            if not self._is_writer:
+                return
         with self._lock:
             sampled_at = getattr(metrics, "sampled_at", None) or time.time()
             elapsed = sampled_at - self._last_sample_at if self._last_sample_at is not None else 1.0
@@ -142,6 +201,8 @@ class SummaryStore:
 
     def flush(self) -> None:
         """Force-flush the current partial minute (e.g. on shutdown)."""
+        if not self._is_writer:
+            return
         with self._lock:
             self._flush_locked()
 
@@ -199,6 +260,8 @@ class SummaryStore:
         self._rotate_locked()
 
     def rotate_if_needed(self, force: bool = False) -> None:
+        if not self._is_writer:
+            return
         with self._lock:
             if not force and self._size <= self.max_bytes:
                 return

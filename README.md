@@ -202,6 +202,9 @@ average.
 - Auto-rotate: rows older than 21 days are dropped on startup and hourly; a
   hard 20 MB cap drops the oldest rows if the file ever exceeds it
 - Disk cost: one small append per minute (~150 KB/day)
+- Multiple instances sharing a data directory never double-record: a lock
+  file elects a single writer; the other instances read its rows (they
+  observe the same machine) and take over writing if the writer stops
 - Averages only cover time while Yamon is running and the machine is awake
 - Existing rows from before temperature recording still contribute CPU,
   memory, and power averages. Temperature history starts when this version runs.
