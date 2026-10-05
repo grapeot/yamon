@@ -1,11 +1,12 @@
 from types import SimpleNamespace
 import json
 import plistlib
+import pytest
 
 from yamon.api.payload import metric_payload
 from yamon.collectors.apple_api import AppleAPICollector
 from yamon.collectors.collector import SystemMetrics
-from yamon.collectors.cpu_topology import cpu_group_percentages, parse_ioreg_cpu_types
+from yamon.collectors.cpu_topology import cpu_group_percentages, cpu_groups, cpu_types, parse_ioreg_cpu_types
 from yamon.summary import SummaryStore
 
 
@@ -33,6 +34,46 @@ def test_interleaved_topology_and_contributions(monkeypatch):
     assert (payload["cpu_p_count"], payload["cpu_e_count"]) == (24, 8)
     assert "ane_usage" not in payload
     assert payload["ane_power"] is None
+
+
+@pytest.mark.parametrize("kinds", [["E"] * 4 + ["P"] * 4, ["E"] * 4 + ["P"] * 8,
+                                   ["M"] * 12 + ["P"] * 6])
+def test_machine_topologies_including_rosetta(monkeypatch, kinds):
+    output = "".join(f'+-o cpu{i}@0\n  {{\n  "cluster-type" = <"{kind}">\n'
+                     f'  "logical-cpu-id" = {i}\n  }}\n' for i, kind in enumerate(kinds))
+    monkeypatch.setattr("yamon.collectors.cpu_topology.platform.system", lambda: "Darwin")
+    monkeypatch.setattr("yamon.collectors.cpu_topology.platform.machine", lambda: "x86_64")
+    monkeypatch.setattr("yamon.collectors.cpu_topology.subprocess.run", lambda *a, **kw: SimpleNamespace(stdout=output))
+    secondary = "M" if "M" in kinds else "E"
+    values = {"hw.perflevel0.physicalcpu": str(kinds.count("P")),
+              "hw.perflevel1.physicalcpu": str(kinds.count(secondary)),
+              "hw.perflevel0.name": "Super", "hw.perflevel1.name": "Performance"}
+    monkeypatch.setattr("yamon.collectors.cpu_topology.subprocess.check_output", lambda command, **kw: values[command[-1]])
+    cpu_types.cache_clear()
+    from yamon.collectors.cpu_topology import cpu_group_label
+    cpu_group_label.cache_clear()
+    try:
+        topology = cpu_types(len(kinds))
+        assert topology == dict(enumerate(kinds))
+        per_core = [float(i * 3) for i in range(len(kinds))]
+        groups = cpu_groups(per_core, topology)
+        assert sum(g["count"] for g in groups) == len(kinds)
+        assert sum(g["percent"] for g in groups) == pytest.approx(sum(per_core) / len(kinds))
+        if secondary == "M":
+            assert [(g["label"], g["count"]) for g in groups] == [("Super", 6), ("Performance", 12)]
+            assert cpu_group_percentages(per_core, topology)[1] is None
+    finally:
+        cpu_types.cache_clear()
+        cpu_group_label.cache_clear()
+
+
+def test_logical_ids_and_incomplete_topology():
+    output = '+-o cpu8@0\n {\n "logical-cpu-id" = 0\n "cluster-type" = <"E">\n }\n'
+    output += '+-o cpu9@100\n {\n "logical-cpu-id" = 1\n "cluster-type" = <"P">\n }\n'
+    assert parse_ioreg_cpu_types(output, 2) == {0: "E", 1: "P"}
+    assert parse_ioreg_cpu_types(output.replace('= 1', '= 0'), 2) is None
+    assert cpu_groups([10, 20], None) == []
+    assert cpu_group_percentages([10, 20], None) == (None, None)
 
 
 def test_plist_units_frequency_and_gpu_residency(monkeypatch):

@@ -28,6 +28,9 @@ function App() {
             <div className="metric-section">
               <CpuChart
                 cpuPercent={typedMetrics.cpu_percent}
+                cpuHistory={history.cpu_percent}
+                cpuGroups={typedMetrics.cpu_groups}
+                cpuGroupHistory={history.cpu_groups}
                 cpuPPercent={typedMetrics.cpu_p_percent}
                 cpuEPercent={typedMetrics.cpu_e_percent}
                 pcpuFreqMhz={typedMetrics.pcpu_freq_mhz ?? null}
