@@ -3,6 +3,7 @@
 export interface SystemMetrics {
   cpu_percent: number
   cpu_per_core: number[]
+  cpu_groups?: { type: string; label: string; count: number; percent: number }[]
   cpu_count: number
   cpu_p_percent: number | null
   cpu_e_percent: number | null

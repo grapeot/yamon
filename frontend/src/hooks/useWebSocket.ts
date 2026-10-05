@@ -5,6 +5,7 @@ export interface SystemMetrics {
   cpu_percent: number
   cpu_per_core: number[]
   cpu_count: number
+  cpu_groups?: CpuGroup[]
   cpu_p_percent: number | null
   cpu_e_percent: number | null
   cpu_p_count: number | null
@@ -27,7 +28,15 @@ export interface SystemMetrics {
   gpu_temp_c: number | null
 }
 
+export interface CpuGroup {
+  type: string
+  label: string
+  count: number
+  percent: number
+}
+
 interface HistoryData {
+  cpu_groups: Record<string, (number | null)[]>
   cpu_percent: number[]
   cpu_p_percent: (number | null)[]
   cpu_e_percent: (number | null)[]
@@ -45,6 +54,7 @@ interface HistoryData {
 }
 
 const emptyHistory: HistoryData = {
+  cpu_groups: {},
   cpu_percent: [], cpu_p_percent: [], cpu_e_percent: [], memory_percent: [], memory_used: [],
   network_sent_rate: [], network_recv_rate: [], cpu_power: [], gpu_power: [],
   ane_power: [], system_power: [], gpu_usage: [],
@@ -83,6 +93,9 @@ export function useWebSocket() {
         const data = JSON.parse(event.data) as SystemMetrics
         setMetrics(data)
         setHistory((prev) => ({
+          cpu_groups: Object.fromEntries((data.cpu_groups ?? []).map(group => [
+            group.type, [...(prev.cpu_groups[group.type] ?? prev.cpu_percent.map(() => null)), group.percent].slice(-120),
+          ])),
           cpu_percent: [...prev.cpu_percent, data.cpu_percent].slice(-120),
           cpu_p_percent: [...prev.cpu_p_percent, data.cpu_p_percent].slice(-120),
           cpu_e_percent: [...prev.cpu_e_percent, data.cpu_e_percent].slice(-120),
