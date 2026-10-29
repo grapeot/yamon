@@ -145,6 +145,13 @@ def test_text_units_never_guessed_from_size():
     assert parse(text).gpu_freq_mhz == 690
 
 
+def test_text_gpu_does_not_normalize_a_partial_frequency_table():
+    parse = AppleAPICollector._parse_powermetrics_text
+    assert parse("GPU HW active residency: 60.00% (690 MHz: 60 % 1380 MHz: 0%)").gpu_usage == 30
+    assert parse("GPU HW active residency: 60.00% (690 MHz: 60% 1.38 GHz: 0%)").gpu_usage is None
+    assert parse("GPU HW active residency: 60.00% (690 MHz: 60% 1380 MHz: invalid)").gpu_usage is None
+
+
 def test_one_shot_powermetrics_plist_transport(monkeypatch):
     collector = AppleAPICollector.__new__(AppleAPICollector)
     collector._smc = None

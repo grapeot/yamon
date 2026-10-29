@@ -49,7 +49,8 @@ function summaryCell(
     return <span key={key} className="summary-value dim">—</span>
   }
   const partial = recorded < window.window_seconds * 0.99
-  const coverage = `${Math.round((recorded / window.window_seconds) * 100)}%`
+  const coveragePercent = (recorded / window.window_seconds) * 100
+  const coverage = coveragePercent < 1 ? '<1%' : `${Math.round(coveragePercent)}%`
   return <span key={key} className="summary-value">
     {fmt(value(window), unit)}
     {partial && <span className="summary-partial"

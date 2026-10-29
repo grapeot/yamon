@@ -190,9 +190,12 @@ class AppleAPICollector:
                 setattr(metrics, attribute, value / 1000 if match.group(2).lower() == "mw" else value)
         active = re.search(r"(?im)^\s*GPU HW active residency:\s*[\d.]+%\s*\(([^\n]*)\)", text)
         if active:
+            state_pattern = r"([\d.]+)\s*MHz:\s*([\d.]+)\s*%"
             states = [{"freq": float(f), "used_ratio": float(r) / 100}
-                      for f, r in re.findall(r"([\d.]+)\s*MHz:\s*([\d.]+)%", active.group(1))]
-            metrics.gpu_usage = _gpu_utilization(states)
+                      for f, r in re.findall(state_pattern, active.group(1))]
+            # Never normalize a partial table after silently dropping a state.
+            if not re.sub(state_pattern, "", active.group(1)).strip():
+                metrics.gpu_usage = _gpu_utilization(states)
         frequency = re.search(r"(?im)^\s*GPU HW active frequency:\s*([\d.]+)\s*MHz", text)
         if frequency:
             metrics.gpu_freq_mhz = float(frequency.group(1))

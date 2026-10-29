@@ -5,6 +5,7 @@ import pytest
 
 from yamon.api.payload import metric_payload
 from yamon.collectors.collector import SystemMetrics
+from yamon.history import MetricsHistory
 from yamon.summary import SummaryStore
 
 
@@ -21,6 +22,13 @@ def test_gpu_payload_identifies_corrected_utilization(monkeypatch):
     assert payload["gpu_usage_source"] == "frequency_weighted_residency"
     metrics.gpu_usage = None
     assert metric_payload(metrics)["gpu_usage_source"] is None
+
+    history = MetricsHistory()
+    for value in (30, None, 0):
+        metrics.gpu_usage = value
+        history.add_metrics(metrics)
+    assert history.gpu_usage.get_values() == [30, None, 0]
+    assert len(history.gpu_usage.get_values()) == len(history.cpu_percent.get_values())
 
 
 def test_gpu_summary_weights_valid_seconds_and_preserves_older_metrics(tmp_path, monkeypatch):
