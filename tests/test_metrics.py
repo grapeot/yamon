@@ -76,7 +76,7 @@ def test_logical_ids_and_incomplete_topology():
     assert cpu_group_percentages([10, 20], None) == (None, None)
 
 
-def test_plist_units_frequency_and_gpu_residency(monkeypatch):
+def test_plist_units_frequency_and_gpu_utilization(monkeypatch):
     collector = AppleAPICollector.__new__(AppleAPICollector)
     collector._smc = None
     sample = {
@@ -89,7 +89,11 @@ def test_plist_units_frequency_and_gpu_residency(monkeypatch):
                 {"name": "P1-Cluster", "freq_hz": 3_500_000_000, "dvfm_states": [{"freq": 4056}]},
             ],
         },
-        "gpu": {"idle_ratio": 0.472149, "freq_hz": 784.108},
+        "gpu": {"idle_ratio": 0.472149, "freq_hz": 784.108, "dvfm_states": [
+            {"freq": 338, "used_ratio": 0.0137054},
+            {"freq": 796, "used_ratio": 0.514146},
+            {"freq": 1380, "used_ratio": 0.0},
+        ]},
     }
     metrics = collector._parse_powermetrics_plist(sample)
     assert metrics.cpu_power == 58.1969
@@ -97,7 +101,36 @@ def test_plist_units_frequency_and_gpu_residency(monkeypatch):
     assert metrics.ane_power == 0.0
     assert metrics.system_power is None
     assert (metrics.pcpu_freq_mhz, metrics.ecpu_freq_mhz) == (3550, 1750)
-    assert round(metrics.gpu_usage, 3) == 52.785
+    assert metrics.gpu_freq_mhz == 784.108
+    assert metrics.gpu_usage == pytest.approx(29.992220376811595)
+
+
+@pytest.mark.parametrize("ratios,expected", [
+    ([0, 0], 0), ([0, 1], 100), ([0.6, 0], 30), ([0.2, 0.4], 50),
+])
+def test_gpu_utilization_uses_supported_ceiling_even_when_unused(ratios, expected):
+    collector = AppleAPICollector.__new__(AppleAPICollector)
+    collector._smc = None
+    sample = {"gpu": {"dvfm_states": [
+        {"freq": 690, "used_ratio": ratios[0]},
+        {"freq": 1380, "used_ratio": ratios[1]},
+    ]}}
+    assert collector._parse_powermetrics_plist(sample).gpu_usage == pytest.approx(expected)
+
+
+@pytest.mark.parametrize("states", [
+    None, [], [{"freq": 1380}], [{"freq": 0, "used_ratio": 1}],
+    [{"freq": float("nan"), "used_ratio": 1}],
+    [{"freq": 1380, "used_ratio": float("nan")}],
+    [{"freq": 1380, "used_ratio": float("inf")}],
+    [{"freq": 1380, "used_ratio": -0.1}],
+    [{"freq": 690, "used_ratio": 0.8}, {"freq": 1380, "used_ratio": 0.8}],
+])
+def test_gpu_missing_or_invalid_frequency_states_are_unavailable(states):
+    collector = AppleAPICollector.__new__(AppleAPICollector)
+    collector._smc = None
+    sample = {"gpu": {"idle_ratio": 0.4, "freq_hz": 690, "dvfm_states": states}}
+    assert collector._parse_powermetrics_plist(sample).gpu_usage is None
 
 
 def test_text_units_never_guessed_from_size():
@@ -106,7 +139,10 @@ def test_text_units_never_guessed_from_size():
     high = parse("CPU Power: 150 W\nGPU Power: 150 W\nANE Power: 150 W")
     assert (small.cpu_power, small.gpu_power, small.ane_power) == (0.05, 0.05, 0.05)
     assert (high.cpu_power, high.gpu_power, high.ane_power) == (150, 150, 150)
-    assert parse("GPU HW active residency: 100.00%\nGPU HW active frequency: 500 MHz").gpu_usage == 100
+    assert parse("GPU HW active residency: 100.00%\nGPU HW active frequency: 500 MHz").gpu_usage is None
+    text = "GPU HW active residency: 60.00% (690 MHz: 60% 1380 MHz: 0%)\nGPU HW active frequency: 690 MHz"
+    assert parse(text).gpu_usage == pytest.approx(30)
+    assert parse(text).gpu_freq_mhz == 690
 
 
 def test_one_shot_powermetrics_plist_transport(monkeypatch):
@@ -114,7 +150,7 @@ def test_one_shot_powermetrics_plist_transport(monkeypatch):
     collector._smc = None
     commands = []
     sample = {"processor": {"cpu_power": 50, "gpu_power": 0, "ane_power": 0},
-              "gpu": {"idle_ratio": 1.0}}
+              "gpu": {"idle_ratio": 1.0, "dvfm_states": [{"freq": 1380, "used_ratio": 0.0}]}}
 
     def run(command, **kwargs):
         commands.append(command)

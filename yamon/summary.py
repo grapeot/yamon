@@ -93,6 +93,8 @@ class SummaryStore:
         # per-minute accumulator
         self._cpu_s = 0.0
         self._cpu_n = 0
+        self._gpu_s = 0.0
+        self._gpu_n = 0.0
         self._mem_s = 0.0
         self._mem_n = 0
         self._pwr_s = 0.0
@@ -184,6 +186,10 @@ class SummaryStore:
                 self._next_flush_at = time.monotonic() + self.flush_interval
             self._cpu_s += float(metrics.cpu_percent) * weight
             self._cpu_n += weight
+            gpu_usage = getattr(metrics, "gpu_usage", None)
+            if gpu_usage is not None and math.isfinite(gpu_usage) and 0 <= gpu_usage <= 100:
+                self._gpu_s += float(gpu_usage) * weight
+                self._gpu_n += weight
             self._mem_s += float(metrics.memory_used) * weight
             self._mem_n += weight
             if metrics.system_power is not None:
@@ -211,10 +217,12 @@ class SummaryStore:
         if self._cpu_n == 0 or self._window_start is None:
             return
         row = {
-            "schema": 3,
+            "schema": 4,
             "ts": self._window_start,
             "cpu_s": _round(self._cpu_s),
             "cpu_n": _round(self._cpu_n),
+            "gpu_s": _round(self._gpu_s),
+            "gpu_n": _round(self._gpu_n),
             "mem_s": _round(self._mem_s, 1),
             "mem_n": _round(self._mem_n),
             "pwr_s": _round(self._pwr_s),
@@ -242,6 +250,8 @@ class SummaryStore:
                 print(f"yamon summary: write failed: {e}")
         self._cpu_s = 0.0
         self._cpu_n = 0
+        self._gpu_s = 0.0
+        self._gpu_n = 0.0
         self._mem_s = 0.0
         self._mem_n = 0
         self._pwr_s = 0.0
@@ -333,19 +343,20 @@ class SummaryStore:
         total_recorded = 0
         for r in rows:
             ts = r.get("ts")
-            if r.get("schema") not in (2, 3) or ts is None or ts > now:
+            if r.get("schema") not in (2, 3, 4) or ts is None or ts > now:
                 continue
             total_recorded += r.get("cpu_n", 0)
         windows = []
         for seconds in window_seconds:
             cutoff = now - seconds
             cpu_s = cpu_n = mem_s = mem_n = pwr_s = pwr_n = temp_s = temp_n = 0
+            gpu_s = gpu_n = 0
             oldest: Optional[int] = None
             for r in rows:
                 ts = r.get("ts")
                 # Earlier rows counted samples rather than elapsed time and
                 # used a different CPU metric. Do not mix the two contracts.
-                if r.get("schema") not in (2, 3) or ts is None or ts < cutoff or ts > now:
+                if r.get("schema") not in (2, 3, 4) or ts is None or ts < cutoff or ts > now:
                     continue
                 cpu_s += r.get("cpu_s", 0)
                 cpu_n += r.get("cpu_n", 0)
@@ -353,19 +364,24 @@ class SummaryStore:
                 mem_n += r.get("mem_n", 0)
                 pwr_s += r.get("pwr_s", 0)
                 pwr_n += r.get("pwr_n", 0)
-                if r.get("schema") == 3:
+                if r.get("schema") in (3, 4):
                     temp_s += r.get("temp_s", 0)
                     temp_n += r.get("temp_n", 0)
+                if r.get("schema") == 4:
+                    gpu_s += r.get("gpu_s", 0)
+                    gpu_n += r.get("gpu_n", 0)
                 if oldest is None or ts < oldest:
                     oldest = ts
             windows.append({
                 "window_seconds": seconds,
                 "days": seconds / 86400,
                 "cpu_percent": _round(cpu_s / cpu_n, 1) if cpu_n else None,
+                "gpu_usage": _round(gpu_s / gpu_n, 1) if gpu_n else None,
                 "memory_used_gb": _round(mem_s / mem_n / 2**30, 1) if mem_n else None,
                 "system_power_w": _round(pwr_s / pwr_n, 1) if pwr_n else None,
                 "temperature_c": _round(temp_s / temp_n, 1) if temp_n else None,
                 "samples": cpu_n,
+                "gpu_samples": gpu_n,
                 "mem_samples": mem_n,
                 "pwr_samples": pwr_n,
                 "temp_samples": temp_n,
