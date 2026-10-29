@@ -108,8 +108,7 @@ class MetricsHistory:
         if metrics.system_power is not None:
             self.system_power.add(metrics.system_power)
         
-        # GPU usage
-        if metrics.gpu_usage is not None:
-            self.gpu_usage.add(metrics.gpu_usage)
+        # Preserve missing GPU samples so REST history keeps its time axis.
+        self.gpu_usage.add(metrics.gpu_usage)
         self.cpu_temp_c.add(metrics.cpu_temp_c)
         self.gpu_temp_c.add(metrics.gpu_temp_c)

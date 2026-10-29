@@ -14,6 +14,6 @@ def metric_payload(metrics):
         "cpu_p_count": sum(kind == "P" for kind in topology.values()) if topology else None,
         "cpu_e_count": sum(kind == "E" for kind in topology.values()) if topology else None,
         "cpu_groups": cpu_groups(metrics.cpu_per_core, topology),
-        "gpu_usage_source": "active_residency" if metrics.gpu_usage is not None else None,
+        "gpu_usage_source": "frequency_weighted_residency" if metrics.gpu_usage is not None else None,
     })
     return values

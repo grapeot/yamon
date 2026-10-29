@@ -3,10 +3,12 @@ import { useEffect, useState } from 'react'
 interface WindowSummary {
   window_seconds: number
   cpu_percent: number | null
+  gpu_usage: number | null
   memory_used_gb: number | null
   system_power_w: number | null
   temperature_c: number | null
   samples: number
+  gpu_samples: number
   mem_samples: number
   pwr_samples: number
   temp_samples: number
@@ -43,11 +45,12 @@ function summaryCell(
   // column's own length for 5M/1H, one recorded day for longer windows.
   // Gating on the cumulative total (not on this window's coverage) keeps the
   // unflushed minute and sleep gaps from wedging a column at the placeholder.
-  if (!window || totalRecorded < Math.min(window.window_seconds, 86400)) {
+  if (!window || recorded <= 0 || totalRecorded < Math.min(window.window_seconds, 86400)) {
     return <span key={key} className="summary-value dim">—</span>
   }
   const partial = recorded < window.window_seconds * 0.99
-  const coverage = `${Math.round((recorded / window.window_seconds) * 100)}%`
+  const coveragePercent = (recorded / window.window_seconds) * 100
+  const coverage = coveragePercent < 1 ? '<1%' : `${Math.round(coveragePercent)}%`
   return <span key={key} className="summary-value">
     {fmt(value(window), unit)}
     {partial && <span className="summary-partial"
@@ -96,6 +99,7 @@ export function SummaryStrip() {
     <span className="summary-label" role="rowheader">AVG</span>
     {WINDOWS.map(({ seconds, label }) => <span key={seconds} className="summary-head" role="columnheader">{label}</span>)}
     {row('CPU', (w) => w.cpu_percent, (w) => w.samples, '%')}
+    {row('GPU', (w) => w.gpu_usage, (w) => w.gpu_samples ?? 0, '%')}
     {row('MEM', (w) => w.memory_used_gb, (w) => w.mem_samples, 'G')}
     {row('PWR', (w) => w.system_power_w, (w) => w.pwr_samples, 'W')}
     {row('TEMP', (w) => w.temperature_c, (w) => w.temp_samples, '°C')}

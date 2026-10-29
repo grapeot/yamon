@@ -1,5 +1,6 @@
 """Apple Silicon metrics from powermetrics (root) or IOReport (unprivileged)."""
 
+import math
 import os
 import platform
 import plistlib
@@ -20,7 +21,7 @@ class AppleMetrics:
     ecpu_freq_mhz: Optional[float] = None
     pcpu_max_freq_mhz: Optional[float] = None
     ecpu_max_freq_mhz: Optional[float] = None
-    gpu_usage: Optional[float] = None  # GPU hardware active residency, 0-100
+    gpu_usage: Optional[float] = None  # GPU utilization, 0-100
     gpu_freq_mhz: Optional[float] = None
     cpu_temp_c: Optional[float] = None
     gpu_temp_c: Optional[float] = None
@@ -38,6 +39,30 @@ def _cpu_mhz(value):
 def _watts_from_milliwatts(value):
     amount = _number(value)
     return amount / 1000 if amount is not None else None
+
+
+def _gpu_utilization(states):
+    """Weight whole-window GPU residency by each supported frequency state."""
+    if not isinstance(states, list) or not states:
+        return None
+    frequencies = []
+    residencies = []
+    for state in states:
+        if not isinstance(state, dict):
+            return None
+        frequency = _number(state.get("freq"))
+        residency = _number(state.get("used_ratio"))
+        if (frequency is None or not math.isfinite(frequency) or frequency <= 0
+                or residency is None or not math.isfinite(residency)
+                or not 0 <= residency <= 1):
+            return None
+        frequencies.append(frequency)
+        residencies.append(residency)
+    # Include unused states in the maximum; observed clocks are not a ceiling.
+    if sum(residencies) > 1.0001:
+        return None
+    maximum = max(frequencies)
+    return min(100.0, sum(r * (f / maximum) for r, f in zip(residencies, frequencies)) * 100)
 
 
 class AppleAPICollector:
@@ -69,7 +94,7 @@ class AppleAPICollector:
         if not self._is_apple_silicon:
             return None
         # powermetrics supplies a full one-second power interval and GPU
-        # residency when already running as root. IOReport remains sudo-free.
+        # frequency-state residency when already running as root. IOReport remains sudo-free.
         if os.geteuid() == 0:
             result = self._collect_via_powermetrics()
             if result is not None and any(
@@ -147,9 +172,7 @@ class AppleAPICollector:
             maximums = [f for f in maximums if f is not None]
             if maximums:
                 setattr(metrics, f"{prefix}_max_freq_mhz", max(maximums))
-        idle_ratio = _number(gpu.get("idle_ratio"))
-        if idle_ratio is not None and 0 <= idle_ratio <= 1:
-            metrics.gpu_usage = (1 - idle_ratio) * 100
+        metrics.gpu_usage = _gpu_utilization(gpu.get("dvfm_states"))
         # The observed macOS plist GPU field is already numerically in MHz,
         # despite its freq_hz name (784.108 in a 784 MHz sample).
         metrics.gpu_freq_mhz = _number(gpu.get("freq_hz"))
@@ -165,9 +188,17 @@ class AppleAPICollector:
             if match:
                 value = float(match.group(1))
                 setattr(metrics, attribute, value / 1000 if match.group(2).lower() == "mw" else value)
-        active = re.search(r"(?im)^\s*GPU HW active residency:\s*([\d.]+)%", text)
+        active = re.search(r"(?im)^\s*GPU HW active residency:\s*[\d.]+%\s*\(([^\n]*)\)", text)
         if active:
-            metrics.gpu_usage = float(active.group(1))
+            state_pattern = r"([\d.]+)\s*MHz:\s*([\d.]+)\s*%"
+            states = [{"freq": float(f), "used_ratio": float(r) / 100}
+                      for f, r in re.findall(state_pattern, active.group(1))]
+            # Never normalize a partial table after silently dropping a state.
+            if not re.sub(state_pattern, "", active.group(1)).strip():
+                metrics.gpu_usage = _gpu_utilization(states)
+        frequency = re.search(r"(?im)^\s*GPU HW active frequency:\s*([\d.]+)\s*MHz", text)
+        if frequency:
+            metrics.gpu_freq_mhz = float(frequency.group(1))
         return metrics
 
     def is_available(self) -> bool:

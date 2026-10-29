@@ -57,14 +57,14 @@ export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
         type: 'value',
         min: 0,
         max: 100,
-        name: 'Usage %',
+        name: 'Utilization %',
         nameTextStyle: { color: '#aaa', fontSize: 12 },
         axisLabel: { color: '#aaa', fontSize: 12 },
         splitLine: { lineStyle: { color: '#333' } },
       },
       series: [
         {
-          name: 'GPU Usage',
+          name: 'GPU Utilization',
           type: 'line',
           smooth: false,
           showSymbol: false,
@@ -90,8 +90,8 @@ export function GpuChart({ gpuUsage, gpuFreqMhz, history }: GpuChartProps) {
   }, [gpuUsage, gpuFreqMhz, history])
 
   const titleText = gpuFreqMhz !== null
-    ? `GPU Usage: ${gpuUsage === null ? '—' : gpuUsage.toFixed(1) + '%'} (${gpuFreqMhz.toFixed(0)} MHz)`
-    : `GPU Usage: ${gpuUsage === null ? '—' : gpuUsage.toFixed(1) + '%'}`
+    ? `GPU Utilization: ${gpuUsage === null ? '—' : gpuUsage.toFixed(1) + '%'} (${gpuFreqMhz.toFixed(0)} MHz)`
+    : `GPU Utilization: ${gpuUsage === null ? '—' : gpuUsage.toFixed(1) + '%'}`
 
   return (
     <div className="chart-container">

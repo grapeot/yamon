@@ -36,7 +36,7 @@ export interface HistoryData {
   gpu_power: number[]
   ane_power: number[]
   system_power: number[]
-  gpu_usage: number[]
+  gpu_usage: (number | null)[]
   cpu_temp_c: (number | null)[]
   gpu_temp_c: (number | null)[]
 }

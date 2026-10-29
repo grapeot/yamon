@@ -97,11 +97,14 @@ sudo /usr/bin/powermetrics -i 1000 -n 1 -s cpu_power,gpu_power,ane_power -f plis
   > powermetrics.json
 ```
 
-The `processor.cpu_power`, `processor.gpu_power`, and `processor.ane_power`
-values in this plist are **milliwatts**; Yamon converts them to watts. The
-`gpu.idle_ratio` field measures idle time, so Yamon displays
-`(1 - idle_ratio) × 100` as GPU active time. Apple's estimated power figures
-are useful for changes on one machine, not calibrated wall-outlet power.
+Processor CPU, GPU, and ANE power values from `powermetrics` are reported in
+**milliwatts** and converted to watts; these estimated powers are intended for
+comparing changes on one machine, not as calibrated wall-outlet power
+measurements. GPU utilization is calculated as
+`100 * sum(whole-window state used_ratio * state frequency / maximum supported GPU state frequency)`,
+including unused states in the maximum frequency ceiling. Missing or invalid
+GPU state data yields an unavailable value, and the metric does not measure
+exact compute saturation.
 
 To allow only that exact `powermetrics` command without a password on a Mac,
 open a sudoers file with the validating editor:
@@ -190,12 +193,11 @@ Yamon bridges the gap between low-level hardware counters and high-level visuali
 
 ## 📈 Rolling Averages
 
-Yamon records per-minute aggregates of CPU usage, memory used, system power,
-and temperature to a single JSONL file. The footer shows observed-time
-averages for the past 1 hour, 1 day, 3 days, 7 days, and 14 days. Each
-temperature sample is the arithmetic mean of the CPU and GPU sensor averages;
-if either sensor is unavailable, that sample does not enter the temperature
-average.
+Per-minute JSONL history records CPU usage, GPU utilization, memory used,
+system power, and temperature, and rolling summaries report observed-time
+averages over 1 hour, 1 day, 3 days, 7 days, and 14 days. Each temperature
+sample averages the CPU and GPU sensor means and is excluded when either
+sensor mean is missing.
 
 - Data file: `~/Library/Application Support/yamon/summary.jsonl` (override the
   directory with the `YAMON_DATA_DIR` environment variable)
@@ -206,8 +208,8 @@ average.
   file elects a single writer; the other instances read its rows (they
   observe the same machine) and take over writing if the writer stops
 - Averages only cover time while Yamon is running and the machine is awake
-- Existing rows from before temperature recording still contribute CPU,
-  memory, and power averages. Temperature history starts when this version runs.
+- Prior schema 2 and schema 3 metrics are retained; GPU utilization history
+  starts on upgrade and aggregates valid GPU seconds only, with no zero backfill.
 - The 1-hour column appears after one recorded hour. Longer windows appear
   after one recorded day and mark shorter coverage as partial.
 
