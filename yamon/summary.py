@@ -18,6 +18,7 @@ import json
 import math
 import os
 import pwd
+import subprocess
 import threading
 import time
 from pathlib import Path
@@ -126,8 +127,36 @@ class SummaryStore:
             if self._is_writer:
                 return
             try:
-                fd = os.open(self._lock_path, os.O_RDWR | os.O_CREAT, 0o644)
-            except OSError as e:
+                # On first launch there is no parent for the sidecar lock yet.
+                parent = self._lock_path.parent
+                owner = None
+                if os.geteuid() == 0 and os.environ.get("SUDO_USER"):
+                    try:
+                        owner = pwd.getpwnam(os.environ["SUDO_USER"])
+                    except KeyError:
+                        pass
+                if not parent.is_dir():
+                    if owner is None:
+                        parent.mkdir(parents=True, exist_ok=True)
+                    else:
+                        subprocess.run(
+                            ["/usr/bin/sudo", "-n", "-u", f"#{owner.pw_uid}", "--",
+                             "/bin/mkdir", "-p", os.path.abspath(parent)],
+                            check=True, capture_output=True,
+                        )
+                flags = os.O_RDWR | os.O_NOFOLLOW
+                try:
+                    fd = os.open(self._lock_path, flags | os.O_CREAT | os.O_EXCL, 0o644)
+                except FileExistsError:
+                    fd = os.open(self._lock_path, flags)
+                else:
+                    if owner is not None:
+                        try:
+                            os.fchown(fd, owner.pw_uid, owner.pw_gid)
+                        except OSError:
+                            os.close(fd)
+                            raise
+            except (OSError, subprocess.CalledProcessError) as e:
                 print(f"yamon summary: cannot open {self._lock_path}: {e}; read-only")
                 return
             try:
@@ -141,7 +170,6 @@ class SummaryStore:
                 return
             self._writer_fd = fd
             self._is_writer = True
-            _chown_to_invoking_user(self._lock_path)
 
     @property
     def is_writer(self) -> bool:
